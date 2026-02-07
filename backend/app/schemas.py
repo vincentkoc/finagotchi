@@ -5,8 +5,10 @@ from pydantic import BaseModel, Field
 
 
 class QARequest(BaseModel):
-    question: str
-    pet_id: str = "default"
+    """Request to answer a user question."""
+
+    question: str = Field(description="User question or dilemma prompt")
+    pet_id: str = Field(default="default", description="Pet identifier")
 
 
 class DilemmaResponse(BaseModel):
@@ -59,9 +61,11 @@ class QAResponse(BaseModel):
 
 
 class FeedbackRequest(BaseModel):
-    interaction_id: str
-    action: str
-    rationale: str | None = None
+    """User feedback to update pet state."""
+
+    interaction_id: str = Field(description="Interaction id from /qa")
+    action: str = Field(description="approve|flag|reject|escalate")
+    rationale: str | None = Field(default=None, description="Optional rationale")
 
 
 class FeedbackResponse(BaseModel):

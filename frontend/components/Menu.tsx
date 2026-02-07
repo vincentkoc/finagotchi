@@ -9,7 +9,7 @@ const pathToText = {
   play: "ops > control room",
   create: "recruitment desk",
   about: "about finagotchi",
-  scrapbook: "personnel records",
+  dossiers: "personnel records",
 };
 
 // Custom popup component
@@ -68,7 +68,7 @@ function MenuContent({
   page,
   showConfirmPopup,
 }: {
-  page: "play" | "create" | "scrapbook" | "about";
+  page: "play" | "create" | "dossiers" | "about";
   showConfirmPopup: () => void;
 }) {
   const { pet } = usePet();
@@ -77,7 +77,7 @@ function MenuContent({
     return null;
   }
 
-  if (page === "about" || page === "scrapbook") {
+  if (page === "about" || page === "dossiers") {
     return (
       <>
         <AnimatePresence>
@@ -139,7 +139,7 @@ function MenuContent({
 
       <AnimatePresence>
         <motion.a
-          href="/scrapbook"
+          href="/dossiers"
           className="hover:text-zinc-800 no-drag"
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -167,7 +167,7 @@ function MenuContent({
 const MobileMenu = forwardRef<
   HTMLDivElement,
   {
-    page: "play" | "create" | "scrapbook" | "about";
+    page: "play" | "create" | "dossiers" | "about";
     isOpen: boolean;
     onClose: () => void;
     showConfirmPopup: () => void;
@@ -181,7 +181,7 @@ const MobileMenu = forwardRef<
 
   const menuItems = [];
 
-  if (page === "about" || page === "scrapbook") {
+  if (page === "about" || page === "dossiers") {
     menuItems.push(
       <motion.a
         key="back"
@@ -223,7 +223,7 @@ const MobileMenu = forwardRef<
     menuItems.push(
       <motion.a
         key="scrapbook"
-        href="/scrapbook"
+        href="/dossiers"
         className="hover:text-zinc-800 no-drag block py-2"
         onClick={onClose}
         initial={{ opacity: 0, x: -20 }}
@@ -272,7 +272,7 @@ MobileMenu.displayName = "MobileMenu";
 export default function Menu({
   page,
 }: {
-  page: "play" | "create" | "scrapbook" | "about";
+  page: "play" | "create" | "dossiers" | "about";
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [confirmPopupOpen, setConfirmPopupOpen] = useState(false);

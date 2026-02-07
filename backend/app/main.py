@@ -24,9 +24,15 @@ from .schemas import (
     GraphBundle,
     AnswerJSON,
 )
+from .docstrings import (
+    QA_EXAMPLE_REQUEST,
+    QA_EXAMPLE_RESPONSE,
+    FEEDBACK_EXAMPLE_REQUEST,
+    FEEDBACK_EXAMPLE_RESPONSE,
+)
 
 setup_logging()
-app = FastAPI()
+app = FastAPI(docs_url="/", redoc_url="/redoc")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -72,7 +78,7 @@ def health_models() -> dict[str, object]:
     return status
 
 
-@app.post("/llm/chat")
+@app.post("/llm/chat", summary="Proxy chat completions", tags=["LLM"])
 def llm_chat_proxy(payload: dict, request: Request) -> Response:
     # Proxy raw OpenAI-compatible payload to chat server (or in-proc if enabled)
     if llm.inproc is not None:
@@ -84,7 +90,7 @@ def llm_chat_proxy(payload: dict, request: Request) -> Response:
     return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "application/json"))
 
 
-@app.post("/llm/embeddings")
+@app.post("/llm/embeddings", summary="Proxy embeddings", tags=["LLM"])
 def llm_embed_proxy(payload: dict, request: Request) -> Response:
     if llm.inproc is not None:
         inp = payload.get("input", "")
@@ -104,13 +110,24 @@ def llm_embed_proxy(payload: dict, request: Request) -> Response:
     return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "application/json"))
 
 
-@app.get("/dilemma/next", response_model=DilemmaResponse)
+@app.get(
+    "/dilemma/next",
+    response_model=DilemmaResponse,
+    summary="Get a demo dilemma",
+    tags=["Game"],
+)
 def next_dilemma() -> DilemmaResponse:
     item = bank.next()
     return DilemmaResponse(id=item.id, question=item.question)
 
 
-@app.post("/qa", response_model=QAResponse)
+@app.post(
+    "/qa",
+    response_model=QAResponse,
+    summary="Answer a question with evidence",
+    tags=["Core"],
+    responses={200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}},
+)
 def qa(req: QARequest) -> QAResponse:
     pet = pet_store.get_pet(req.pet_id)
 
@@ -171,7 +188,13 @@ def qa(req: QARequest) -> QAResponse:
     )
 
 
-@app.post("/feedback", response_model=FeedbackResponse)
+@app.post(
+    "/feedback",
+    response_model=FeedbackResponse,
+    summary="Apply user feedback to pet state",
+    tags=["Core"],
+    responses={200: {"content": {"application/json": {"example": FEEDBACK_EXAMPLE_RESPONSE}}}},
+)
 def feedback(req: FeedbackRequest) -> FeedbackResponse:
     pet_id = pet_store.get_interaction_pet(req.interaction_id) or "default"
     pet_stats = pet_store.update_stats(pet_id, req.action)
@@ -201,7 +224,12 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
     )
 
 
-@app.get("/pet", response_model=PetResponse)
+@app.get(
+    "/pet",
+    response_model=PetResponse,
+    summary="Fetch pet state",
+    tags=["Game"],
+)
 def pet(pet_id: str = "default") -> PetResponse:
     pet_state = pet_store.get_pet(pet_id)
     recent = pet_store.list_interactions(pet_id)
@@ -212,7 +240,11 @@ def pet(pet_id: str = "default") -> PetResponse:
     )
 
 
-@app.get("/graph/neighborhood")
+@app.get(
+    "/graph/neighborhood",
+    summary="Fetch a graph neighborhood",
+    tags=["Graph"],
+)
 def graph_neighborhood(entity_id: str, depth: int = 2) -> dict[str, object]:
     anchors = {"vendor_id": {entity_id}, "transaction_id": set(), "sku": set()}
     return kuzu.neighborhood(anchors, depth=depth)

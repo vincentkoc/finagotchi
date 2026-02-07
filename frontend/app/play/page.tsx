@@ -174,7 +174,7 @@ export default function Play() {
                           >
                             collect promotion certificate
                           </a>
-                          <a href="/scrapbook" className="underline">
+                          <a href="/dossiers" className="underline">
                             view agent dossiers
                           </a>
                           <a href="/create" className="underline">

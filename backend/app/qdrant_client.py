@@ -55,9 +55,12 @@ def extract_anchors(evidence: list[dict[str, Any]]) -> dict[str, set[str]]:
         "vendor_id": set(),
         "transaction_id": set(),
         "sku": set(),
+        "chunk_id": set(),
     }
     for item in evidence:
         meta = item.get("meta", {})
+        if "id" in meta:
+            anchors["chunk_id"].add(str(meta["id"]))
         for key in ("vendor_id", "vendorId", "vendor"):
             if key in meta:
                 anchors["vendor_id"].add(str(meta[key]))
