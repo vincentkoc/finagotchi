@@ -35,6 +35,7 @@ FE_DIR := frontend
         api api-noreload kill-port api-restart \
         qdrant-download qdrant-restore qdrant-setup \
         llm-chat llm-embed llm-all \
+        kuzu-rebuild \
         clean
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -86,6 +87,9 @@ help:
 	@echo "    make llm-chat         Run local chat model server"
 	@echo "    make llm-embed        Run local embedding model server"
 	@echo "    make llm-all          Show instructions to run both"
+	@echo ""
+	@echo "  Graph"
+	@echo "    make kuzu-rebuild     Rebuild Kuzu DB from Qdrant"
 	@echo ""
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -223,6 +227,12 @@ llm-all:
 	@echo "Run in two terminals:"
 	@echo "  make llm-chat"
 	@echo "  make llm-embed"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Graph
+# ──────────────────────────────────────────────────────────────────────────────
+kuzu-rebuild:
+	$(PYTHON) backend/scripts/build_kuzu_from_qdrant.py
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Clean

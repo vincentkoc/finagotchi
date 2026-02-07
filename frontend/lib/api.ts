@@ -7,13 +7,14 @@ const API_BASE_URL =
 export type EvidenceItem = {
   id: string;
   text: string;
-  score?: number;
+  meta?: Record<string, unknown>;
 };
 
 export type GraphNode = {
   id: string;
   label: string;
   type?: string;
+  group?: string;
   properties?: Record<string, unknown>;
 };
 
@@ -76,6 +77,21 @@ export type PetResponse = {
     timestamp: string;
   }>;
 };
+
+// Health check — resolves true if backend is reachable.
+export async function checkBackendHealth(): Promise<boolean> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(`${API_BASE_URL}/health`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
 
 // API functions
 export async function postQA(
