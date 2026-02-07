@@ -22,7 +22,7 @@ from .kuzu_adapter import KuzuAdapter
 from .llm_client import LLMClient
 from .logging_setup import setup_logging
 from .pet_store import PetStore
-from .qdrant_client import extract_anchors, make_client, search, to_evidence
+from .qdrant_client import extract_anchors, make_client, records_to_scored, retrieve_by_ids, search, to_evidence
 from .schemas import (
     AnswerJSON,
     DilemmaResponse,
@@ -216,12 +216,78 @@ def llm_embed_proxy(payload: dict, request: Request) -> Response:
 @app.get(
     "/dilemma/next",
     response_model=DilemmaResponse,
-    summary="Get a demo dilemma",
+    summary="Generate a dilemma from real data",
     tags=["Game"],
 )
 def next_dilemma() -> DilemmaResponse:
-    item = bank.next()
-    return DilemmaResponse(id=item.id, question=item.question)
+    """Pick random evidence from Qdrant and generate a contextual dilemma."""
+    import random
+
+    # Sample a random finance-related query to get diverse evidence
+    seed_queries = [
+        "invoice vendor payment due",
+        "purchase order expense transaction",
+        "vendor discount bulk pricing",
+        "overdue invoice late payment",
+        "high amount transaction review",
+        "duplicate invoice matching amounts",
+        "new vendor procurement order",
+        "expense claim reimbursement receipt",
+    ]
+    seed = random.choice(seed_queries)
+
+    try:
+        query_vec = llm.embed(seed)
+        points = search(qdrant, query_vec)
+        evidence = to_evidence(points)
+
+        if not evidence:
+            # Fallback to static dilemma bank
+            item = bank.next()
+            return DilemmaResponse(id=item.id, question=item.question)
+
+        # Pick 1-2 evidence items for the dilemma context
+        selected = random.sample(evidence, min(2, len(evidence)))
+        context_lines = []
+        evidence_ids = []
+        for e in selected:
+            context_lines.append(e["text"][:300])
+            evidence_ids.append(e["id"])
+
+        evidence_context = "\n".join(context_lines)
+
+        # Ask LLM to generate a dilemma from the evidence
+        gen_messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a finance/ops scenario writer for a training game. "
+                    "Given real financial evidence, write a short 1-2 sentence dilemma "
+                    "that a finance agent must decide on. Reference specific details "
+                    "from the evidence (vendor IDs, amounts, dates, SKUs). "
+                    "End with a clear question. Keep it under 60 words. "
+                    "Output ONLY the dilemma text, nothing else."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"Evidence:\n{evidence_context}\n\nWrite a dilemma:",
+            },
+        ]
+
+        question = llm.chat(gen_messages).strip().strip('"')
+        dilemma_id = f"generated_{random.randint(1000, 9999)}"
+
+        return DilemmaResponse(
+            id=dilemma_id,
+            question=question,
+            context=evidence_context,
+            evidence_ids=evidence_ids,
+        )
+    except Exception as exc:
+        logger.warning("Dilemma generation failed: %s — falling back to static", exc)
+        item = bank.next()
+        return DilemmaResponse(id=item.id, question=item.question)
 
 
 @app.post(
@@ -234,8 +300,26 @@ def next_dilemma() -> DilemmaResponse:
 def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QAResponse:
     pet = pet_store.get_pet(req.pet_id)
 
-    query_vec = llm.embed(req.question)
-    points = search(qdrant, query_vec)
+    # If evidence_ids are provided (from dilemma generation), fetch those exact points.
+    # Otherwise fall back to semantic search.
+    if req.evidence_ids:
+        records = retrieve_by_ids(qdrant, req.evidence_ids)
+        points = records_to_scored(records)
+        # Also do a supplementary search to enrich the graph
+        retrieval_text = req.context or req.question
+        extra_vec = llm.embed(retrieval_text)
+        extra_points = search(qdrant, extra_vec)
+        # Merge — deduplicate by point ID
+        seen_ids = {str(p.id) for p in points}
+        for ep in extra_points:
+            if str(ep.id) not in seen_ids:
+                points.append(ep)
+                seen_ids.add(str(ep.id))
+    else:
+        retrieval_text = req.context or req.question
+        query_vec = llm.embed(retrieval_text)
+        points = search(qdrant, query_vec)
+
     evidence = to_evidence(points)
     anchors = extract_anchors(evidence)
 

@@ -32,6 +32,41 @@ def search(
     )
 
 
+def retrieve_by_ids(
+    client: QdrantClient, ids: list[str]
+) -> list[qdrant_models.Record]:
+    """Fetch specific points by their full IDs (qdrant:collection:uuid format)."""
+    # Extract the UUID part from full IDs like "qdrant:DocumentChunk_text:uuid"
+    point_ids = []
+    for full_id in ids:
+        parts = full_id.split(":")
+        raw_id = parts[-1] if parts else full_id
+        point_ids.append(raw_id)
+
+    if not point_ids:
+        return []
+
+    return client.retrieve(
+        collection_name=settings.qdrant_collection,
+        ids=point_ids,
+        with_payload=True,
+        with_vectors=False,
+    )
+
+
+def records_to_scored(records: list[qdrant_models.Record]) -> list[qdrant_models.ScoredPoint]:
+    """Convert Record objects to ScoredPoint-like objects for to_evidence()."""
+    return [
+        qdrant_models.ScoredPoint(
+            id=r.id,
+            version=0,
+            score=1.0,
+            payload=r.payload,
+        )
+        for r in records
+    ]
+
+
 def _summarize_parsed(parsed: dict[str, Any]) -> str:
     """Build a human-readable one-liner from a parsed finance record."""
     parts: list[str] = []

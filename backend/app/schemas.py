@@ -10,11 +10,15 @@ class QARequest(BaseModel):
 
     question: str = Field(description="User question or dilemma prompt")
     pet_id: str = Field(default="default", description="Pet identifier")
+    context: str | None = Field(default=None, description="Dilemma context for evidence retrieval")
+    evidence_ids: list[str] | None = Field(default=None, description="Pre-selected evidence IDs from dilemma generation")
 
 
 class DilemmaResponse(BaseModel):
     id: str
     question: str
+    context: str | None = None
+    evidence_ids: list[str] = Field(default_factory=list)
 
 
 class EvidenceItem(BaseModel):
