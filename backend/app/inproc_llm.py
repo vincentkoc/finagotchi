@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import threading
-from typing import Any, List, cast
+from typing import Any, cast
 
 try:
     from llama_cpp import Llama
@@ -64,4 +64,4 @@ class InprocLLM:
         with self._lock:
             result = self._embed.create_embedding(text)
         embedding = result["data"][0]["embedding"]
-        return cast(List[float], embedding)
+        return cast(list[float], embedding)

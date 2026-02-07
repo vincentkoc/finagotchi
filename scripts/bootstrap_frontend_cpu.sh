@@ -11,7 +11,7 @@ if [ -z "$API_URL" ]; then
 fi
 
 apt-get update
-apt-get install -y docker.io docker-compose-plugin git
+apt-get install -y docker.io docker-compose git
 
 if [ ! -d finagotchi ]; then
   git clone "$REPO_URL"

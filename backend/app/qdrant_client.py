@@ -32,9 +32,7 @@ def search(
     )
 
 
-def retrieve_by_ids(
-    client: QdrantClient, ids: list[str]
-) -> list[qdrant_models.Record]:
+def retrieve_by_ids(client: QdrantClient, ids: list[str]) -> list[qdrant_models.Record]:
     """Fetch specific points by their full IDs (qdrant:collection:uuid format)."""
     # Extract the UUID part from full IDs like "qdrant:DocumentChunk_text:uuid"
     point_ids = []
@@ -54,7 +52,9 @@ def retrieve_by_ids(
     )
 
 
-def records_to_scored(records: list[qdrant_models.Record]) -> list[qdrant_models.ScoredPoint]:
+def records_to_scored(
+    records: list[qdrant_models.Record],
+) -> list[qdrant_models.ScoredPoint]:
     """Convert Record objects to ScoredPoint-like objects for to_evidence()."""
     return [
         qdrant_models.ScoredPoint(
@@ -152,7 +152,10 @@ def extract_anchors(evidence: list[dict[str, Any]]) -> dict[str, set[str]]:
                 if key in src:
                     anchors["vendor_id"].add(str(src[key]))
             for key in (
-                "transaction_id", "transactionId", "txn_id", "txn",
+                "transaction_id",
+                "transactionId",
+                "txn_id",
+                "txn",
                 "invoice_number",
             ):
                 if key in src:

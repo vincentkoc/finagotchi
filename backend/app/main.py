@@ -22,7 +22,14 @@ from .kuzu_adapter import KuzuAdapter
 from .llm_client import LLMClient
 from .logging_setup import setup_logging
 from .pet_store import PetStore
-from .qdrant_client import extract_anchors, make_client, records_to_scored, retrieve_by_ids, search, to_evidence
+from .qdrant_client import (
+    extract_anchors,
+    make_client,
+    records_to_scored,
+    retrieve_by_ids,
+    search,
+    to_evidence,
+)
 from .schemas import (
     AnswerJSON,
     DilemmaResponse,
@@ -100,8 +107,12 @@ def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]
     for edge in edges:
         src = str(edge.get("source"))
         dst = str(edge.get("target"))
-        nodes.setdefault(src, {"id": src, "label": src, "group": "overlay", "type": "overlay"})
-        nodes.setdefault(dst, {"id": dst, "label": dst, "group": "overlay", "type": "overlay"})
+        nodes.setdefault(
+            src, {"id": src, "label": src, "group": "overlay", "type": "overlay"}
+        )
+        nodes.setdefault(
+            dst, {"id": dst, "label": dst, "group": "overlay", "type": "overlay"}
+        )
     return list(nodes.values())
 
 
@@ -295,7 +306,9 @@ def next_dilemma() -> DilemmaResponse:
     response_model=QAResponse,
     summary="Answer a question with evidence",
     tags=["Core"],
-    responses={200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}},
+    responses={
+        200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}
+    },
 )
 def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QAResponse:
     pet = pet_store.get_pet(req.pet_id)
@@ -454,7 +467,9 @@ def feedback(
                     label=str(n.get("label")) if n.get("label") is not None else None,
                     group=str(n.get("group")) if n.get("group") is not None else None,
                     type=str(n.get("type")) if n.get("type") is not None else None,
-                    meta=cast(dict, n.get("meta")) if isinstance(n.get("meta"), dict) else {},
+                    meta=cast(dict, n.get("meta"))
+                    if isinstance(n.get("meta"), dict)
+                    else {},
                     properties=cast(dict, n.get("properties"))
                     if isinstance(n.get("properties"), dict)
                     else None,
@@ -501,7 +516,12 @@ def pet(pet_id: str = "default") -> PetResponse:
     tags=["Graph"],
 )
 def graph_neighborhood(entity_id: str, depth: int = 2) -> GraphBundle:
-    anchors = {"vendor_id": {entity_id}, "transaction_id": set(), "sku": set(), "chunk_id": set()}
+    anchors = {
+        "vendor_id": {entity_id},
+        "transaction_id": set(),
+        "sku": set(),
+        "chunk_id": set(),
+    }
     result = kuzu.neighborhood(anchors, depth=depth)
     return _normalize_graph(result)
 

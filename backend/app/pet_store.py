@@ -83,7 +83,11 @@ class PetStore:
             return {"stats": dict(DEFAULT_STATS), "path": DEFAULT_PATH}
 
     def log_interaction(
-        self, pet_id: str, question: str, evidence: list[dict[str, Any]], answer: dict[str, Any]
+        self,
+        pet_id: str,
+        question: str,
+        evidence: list[dict[str, Any]],
+        answer: dict[str, Any],
     ) -> str:
         interaction_id = str(uuid.uuid4())
         with self._connect() as conn:

@@ -72,7 +72,10 @@ def build_graph_from_evidence(
                         matched = True
                         break
                     # invoice_number also maps to transaction_id anchor
-                    if key == "transaction_id" and str(src.get("invoice_number")) == value:
+                    if (
+                        key == "transaction_id"
+                        and str(src.get("invoice_number")) == value
+                    ):
                         matched = True
                         break
                 if matched:
@@ -153,9 +156,16 @@ def _add_cooccurrence_edges(
         combined = {**meta, **parsed} if isinstance(parsed, dict) else meta
 
         vid = str(combined.get("vendor_id", ""))
-        txn = str(combined.get("transaction_id") or combined.get("invoice_number") or "")
+        txn = str(
+            combined.get("transaction_id") or combined.get("invoice_number") or ""
+        )
 
-        if vid and txn and vid in anchors.get("vendor_id", set()) and txn in anchors.get("transaction_id", set()):
+        if (
+            vid
+            and txn
+            and vid in anchors.get("vendor_id", set())
+            and txn in anchors.get("transaction_id", set())
+        ):
             pair = (f"vendor_id:{vid}", f"transaction_id:{txn}")
             if pair not in seen_pairs:
                 seen_pairs.add(pair)

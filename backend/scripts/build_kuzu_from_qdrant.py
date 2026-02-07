@@ -1,14 +1,16 @@
-import os
 import ast
+import os
 from typing import Any
 
 import kuzu
-from qdrant_client import QdrantClient
 from dotenv import load_dotenv
+from qdrant_client import QdrantClient
 
 # Load env from repo root and backend/.env if present
 load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
-load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")))
+load_dotenv(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+)
 
 QDRANT_URL = os.environ.get(
     "QDRANT_CLUSTER_ENDPOINT",
@@ -60,8 +62,12 @@ conn.execute(
 )
 
 # Relationships
-conn.execute("CREATE REL TABLE IF NOT EXISTS Mentions(FROM Chunk TO Entity, rel STRING)")
-conn.execute("CREATE REL TABLE IF NOT EXISTS Issued(FROM Vendor TO Invoice, rel STRING)")
+conn.execute(
+    "CREATE REL TABLE IF NOT EXISTS Mentions(FROM Chunk TO Entity, rel STRING)"
+)
+conn.execute(
+    "CREATE REL TABLE IF NOT EXISTS Issued(FROM Vendor TO Invoice, rel STRING)"
+)
 conn.execute("CREATE REL TABLE IF NOT EXISTS Contains(FROM Invoice TO SKU, rel STRING)")
 conn.execute("CREATE REL TABLE IF NOT EXISTS Supplies(FROM Vendor TO SKU, rel STRING)")
 
@@ -166,7 +172,9 @@ while True:
                     {
                         "id": str(invoice_id),
                         "vendor": str(vendor_id) if vendor_id is not None else "",
-                        "total": float(total) if isinstance(total, (int, float)) else 0.0,
+                        "total": float(total)
+                        if isinstance(total, (int, float))
+                        else 0.0,
                         "date": str(date) if date is not None else "",
                         "due": str(due) if due is not None else "",
                     },
@@ -174,7 +182,11 @@ while True:
                 if vendor_id is not None:
                     conn.execute(
                         "MATCH (v:Vendor {vendor_id: $vid}), (i:Invoice {invoice_id: $iid}) MERGE (v)-[:Issued {rel: $rel}]->(i)",
-                        {"vid": str(vendor_id), "iid": str(invoice_id), "rel": "ISSUED"},
+                        {
+                            "vid": str(vendor_id),
+                            "iid": str(invoice_id),
+                            "rel": "ISSUED",
+                        },
                     )
 
             items = parsed.get("items")
@@ -193,17 +205,28 @@ while True:
                     if sku:
                         conn.execute(
                             "MERGE (s:SKU {sku: $sku}) SET s.product = $product",
-                            {"sku": str(sku), "product": str(product) if product else ""},
+                            {
+                                "sku": str(sku),
+                                "product": str(product) if product else "",
+                            },
                         )
                         if invoice_id is not None:
                             conn.execute(
                                 "MATCH (i:Invoice {invoice_id: $iid}), (s:SKU {sku: $sku}) MERGE (i)-[:Contains {rel: $rel}]->(s)",
-                                {"iid": str(invoice_id), "sku": str(sku), "rel": "CONTAINS"},
+                                {
+                                    "iid": str(invoice_id),
+                                    "sku": str(sku),
+                                    "rel": "CONTAINS",
+                                },
                             )
                         if vendor_id is not None:
                             conn.execute(
                                 "MATCH (v:Vendor {vendor_id: $vid}), (s:SKU {sku: $sku}) MERGE (v)-[:Supplies {rel: $rel}]->(s)",
-                                {"vid": str(vendor_id), "sku": str(sku), "rel": "SUPPLIES"},
+                                {
+                                    "vid": str(vendor_id),
+                                    "sku": str(sku),
+                                    "rel": "SUPPLIES",
+                                },
                             )
 
         # Entity relationships if present in payload

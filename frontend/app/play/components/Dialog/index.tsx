@@ -40,6 +40,7 @@ export default function Dialog() {
           context: backendDilemma.context,
           evidence_ids: backendDilemma.evidence_ids,
         });
+        setIsLoadingDilemma(false);
         return;
       }
     } catch {
@@ -58,13 +59,13 @@ export default function Dialog() {
     setIsLoadingDilemma(false);
   }, [pet, setDilemma]);
 
-  // Auto-trigger on mount
+  // Auto-trigger on mount and after feedback clears the dilemma
   useEffect(() => {
     if (!pet || dilemma || hasAutoTriggered.current) return;
     if (pet.age >= 2) return;
 
     hasAutoTriggered.current = true;
-    triggerNewDilemma().finally(() => setIsLoadingDilemma(false));
+    triggerNewDilemma();
   }, [pet, dilemma, triggerNewDilemma]);
 
   if (!pet) {

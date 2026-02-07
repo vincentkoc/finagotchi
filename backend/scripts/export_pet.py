@@ -1,11 +1,12 @@
 import json
 import os
+
 from dotenv import load_dotenv
 
 from backend.app.pet_store import PetStore
 
-load_dotenv('.env')
-load_dotenv('backend/.env')
+load_dotenv(".env")
+load_dotenv("backend/.env")
 
 pet_id = os.environ.get("PET_ID", "default")
 out_path = os.environ.get("EXPORT_PATH", "data/exports/pet_export.jsonl")

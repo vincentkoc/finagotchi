@@ -65,16 +65,9 @@ export function useDilemmaSubmit() {
         }
         setLastAnswerDecision(qaResponse.answer_json.decision);
 
-        // Build the response message
+        // Build the response message (evidence shown separately in the evidence trail panel)
         const { answer_json } = qaResponse;
-        const evidenceText = qaResponse.evidence_bundle
-          .slice(0, 3)
-          .map((e) => {
-            const shortId = e.id?.split(":").pop()?.slice(0, 8) || "?";
-            return `[${shortId}]`;
-          })
-          .join(" ");
-        const assistantMessage = `decision: ${answer_json.decision} (confidence: ${Math.round(answer_json.confidence * 100)}%)\n\n${answer_json.rationale}\n\nevidence: ${evidenceText}`;
+        const assistantMessage = `decision: ${answer_json.decision} (confidence: ${Math.round(answer_json.confidence * 100)}%)\n\n${answer_json.rationale}`;
 
         const updatedDilemma = {
           ...dilemma,

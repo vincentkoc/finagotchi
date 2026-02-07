@@ -4,7 +4,7 @@ set -euo pipefail
 REPO_URL="${REPO_URL:-https://github.com/vincentkoc/finagotchi}"
 
 apt-get update
-apt-get install -y docker.io docker-compose-plugin git rsync
+apt-get install -y docker.io docker-compose git rsync
 
 if [ ! -d finagotchi ]; then
   git clone "$REPO_URL"

@@ -49,7 +49,17 @@ const debouncedSave = (key: string, data: Pet[], delay = 500) => {
 
 export const getPets = (): Pet[] => {
   try {
-    const pets = JSON.parse(localStorage.getItem("pets") || "[]") as Pet[];
+    const raw = JSON.parse(localStorage.getItem("pets") || "[]") as Pet[];
+    // Deduplicate by id — keep the last (most recent) entry for each id
+    const seen = new Map<string, Pet>();
+    for (const pet of raw) {
+      seen.set(pet.id, pet);
+    }
+    const pets = Array.from(seen.values());
+    // Auto-fix if duplicates were found
+    if (pets.length < raw.length) {
+      localStorage.setItem("pets", JSON.stringify(pets));
+    }
     return pets;
   } catch (error) {
     console.warn("Failed to load pets, returning empty array:", error);
@@ -80,17 +90,22 @@ export const createPet = async (name: string): Promise<Pet> => {
 
 export const savePet = (pet: Pet): void => {
   const pets = getPets();
-  pets.push(pet);
+  const idx = pets.findIndex((p) => p.id === pet.id);
+  if (idx >= 0) {
+    pets[idx] = pet;
+  } else {
+    pets.push(pet);
+  }
   debouncedSave("pets", pets);
 };
 
 export const updatePet = (id: string, updates: Partial<Pet>): Pet | null => {
   const pets = getPets();
-  const pet = pets.find((pet) => pet.id === id);
-  if (!pet) return null;
+  const idx = pets.findIndex((p) => p.id === id);
+  if (idx < 0) return null;
 
-  const updatedPet = { ...pet, ...updates };
-  pets.push(updatedPet);
+  const updatedPet = { ...pets[idx], ...updates };
+  pets[idx] = updatedPet;
   debouncedSave("pets", pets);
   return updatedPet;
 };

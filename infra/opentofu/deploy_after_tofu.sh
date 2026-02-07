@@ -7,14 +7,16 @@ set -euo pipefail
 # - local git repo with this script
 
 API_URL="${API_URL:-}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_URL_LOCAL="${REPO_URL_LOCAL:-https://github.com/vincentkoc/finagotchi}"
 
 if ! command -v tofu >/dev/null 2>&1; then
   echo "[error] tofu not found"
   exit 1
 fi
 
-BACKEND_IP=$(tofu -chdir=infra/opentofu output -raw backend_ip)
-FRONTEND_IP=$(tofu -chdir=infra/opentofu output -raw frontend_ip)
+BACKEND_IP=$(tofu -chdir="$SCRIPT_DIR" output -raw backend_ip)
+FRONTEND_IP=$(tofu -chdir="$SCRIPT_DIR" output -raw frontend_ip)
 
 if [ -z "$BACKEND_IP" ] || [ -z "$FRONTEND_IP" ]; then
   echo "[error] Missing backend or frontend IPs from tofu output"
@@ -26,10 +28,16 @@ if [ -z "$API_URL" ]; then
 fi
 
 echo "[info] Backend IP: $BACKEND_IP"
-ssh root@"$BACKEND_IP" "REPO_URL=https://github.com/vincentkoc/finagotchi ~/finagotchi/scripts/bootstrap_backend_gpu.sh"
+ssh root@"$BACKEND_IP" "REPO_URL=$REPO_URL_LOCAL; \
+  if [ ! -d finagotchi ]; then git clone \"\$REPO_URL\"; fi; \
+  cd finagotchi; \
+  ./scripts/bootstrap_backend_gpu.sh"
 
 echo "[info] Frontend IP: $FRONTEND_IP"
-ssh root@"$FRONTEND_IP" "REPO_URL=https://github.com/vincentkoc/finagotchi API_URL=$API_URL ~/finagotchi/scripts/bootstrap_frontend_cpu.sh"
+ssh root@"$FRONTEND_IP" "REPO_URL=$REPO_URL_LOCAL API_URL=$API_URL; \
+  if [ ! -d finagotchi ]; then git clone \"\$REPO_URL\"; fi; \
+  cd finagotchi; \
+  ./scripts/bootstrap_frontend_cpu.sh"
 
 cat <<EON
 
