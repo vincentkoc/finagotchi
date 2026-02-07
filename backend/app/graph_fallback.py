@@ -15,11 +15,24 @@ def build_graph_from_evidence(
         node_id = item.get("id")
         if not node_id:
             continue
+        label = node_id.split(":")[-1]
+        parsed = (item.get("meta") or {}).get("parsed")
+        if isinstance(parsed, dict):
+            invoice = parsed.get("invoice_number") or parsed.get("transaction_id")
+            total = parsed.get("total")
+            due = parsed.get("due_date") or parsed.get("date")
+            if invoice:
+                if total is not None:
+                    label = f"{invoice} | ${total}"
+                elif due:
+                    label = f"{invoice} | due {due}"
+                else:
+                    label = str(invoice)
         nodes.setdefault(
             node_id,
             {
                 "id": node_id,
-                "label": node_id.split(":")[-1],
+                "label": label,
                 "group": "evidence",
                 "meta": item.get("meta", {}),
             },
@@ -33,7 +46,7 @@ def build_graph_from_evidence(
                 node_id,
                 {
                     "id": node_id,
-                    "label": value,
+                    "label": f"{key} {value}" if key in ("vendor_id", "transaction_id") else value,
                     "group": key,
                     "meta": {"type": key},
                 },

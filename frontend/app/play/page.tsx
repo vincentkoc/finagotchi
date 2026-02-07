@@ -19,60 +19,37 @@ import Graduation from "./components/Graduation";
 import GraphPanel from "./components/GraphPanel";
 import { EvolutionId } from "@/constants/evolutions";
 
-function Content({
-  healMinigameOpen,
-  feedMinigameOpen,
-  playMinigameOpen,
-  setHealMinigameOpen,
-  setFeedMinigameOpen,
-  setPlayMinigameOpen,
+// Dithered overlay for minigame modals
+function DitheredOverlay({
+  children,
+  isOpen,
+  onClose,
 }: {
-  healMinigameOpen: boolean;
-  feedMinigameOpen: boolean;
-  playMinigameOpen: boolean;
-  setHealMinigameOpen: (open: boolean) => void;
-  setFeedMinigameOpen: (open: boolean) => void;
-  setPlayMinigameOpen: (open: boolean) => void;
+  children: React.ReactNode;
+  isOpen: boolean;
+  onClose: () => void;
 }) {
-  const { pet } = usePet();
-  if (!pet) {
-    return null;
-  }
+  if (!isOpen) return null;
 
-  if (pet.evolutionIds.includes(EvolutionId.RIP)) {
-    return (
-      <div className="flex w-full h-full">
-        <Window title={`${pet.name} has been decommissioned :(`}>
-          <div className="flex flex-col p-3">
-            <p>maybe you should take better care of your finance pet next time...</p>
-            <div className="flex flex-col">
-              <a href="/create">adopt a new finance pet</a>
-            </div>
-          </div>
-        </Window>
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      {/* Dithered backdrop */}
+      <div
+        className="absolute inset-0"
+        onClick={onClose}
+        style={{
+          backgroundColor: "rgba(0,0,0,0.4)",
+          backgroundImage:
+            "url(\"data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23000' opacity='0.3'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23000' opacity='0.3'/%3E%3C/svg%3E\")",
+          backgroundSize: "4px 4px",
+        }}
+      />
+      {/* Centered minigame box */}
+      <div className="relative z-10 w-full max-w-lg mx-4">
+        {children}
       </div>
-    );
-  }
-
-  if (healMinigameOpen) {
-    return (
-      <HealMinigame isOpen={healMinigameOpen} setIsOpen={setHealMinigameOpen} />
-    );
-  }
-
-  if (feedMinigameOpen) {
-    return (
-      <FeedMinigame isOpen={feedMinigameOpen} setIsOpen={setFeedMinigameOpen} />
-    );
-  }
-
-  if (playMinigameOpen) {
-    return (
-      <PlayMinigame isOpen={playMinigameOpen} setIsOpen={setPlayMinigameOpen} />
-    );
-  }
-
-  return <Dialog />;
+    </div>
+  );
 }
 
 export default function Play() {
@@ -80,6 +57,7 @@ export default function Play() {
   const [healMinigameOpen, setHealMinigameOpen] = useState(false);
   const [feedMinigameOpen, setFeedMinigameOpen] = useState(false);
   const [playMinigameOpen, setPlayMinigameOpen] = useState(false);
+  const [graphVisible, setGraphVisible] = useState(true);
   const { pet, evolution } = usePet();
   const { hoverText } = useHoverText();
   const hasGraduated = pet?.age !== undefined && pet.age >= 2;
@@ -95,6 +73,8 @@ export default function Play() {
     );
   }
 
+  const isRip = pet.evolutionIds.includes(EvolutionId.RIP);
+
   return (
     <>
       <HoverText hoverText={hoverText} />
@@ -108,101 +88,166 @@ export default function Play() {
         />
       )}
 
-      <AnimatePresence mode="wait">
-        {/* Split-screen layout: left=gameplay, right=graph */}
-        <div className="flex flex-col lg:flex-row gap-4 p-4 w-full">
-          {/* LEFT COLUMN: Gameplay */}
-          <div className="flex flex-col gap-2 w-full lg:w-1/2 lg:max-w-2xl">
-            <Menu page="play" />
+      {/* Minigame modals — dithered overlay + centered box */}
+      <DitheredOverlay
+        isOpen={healMinigameOpen}
+        onClose={() => setHealMinigameOpen(false)}
+      >
+        <HealMinigame
+          isOpen={healMinigameOpen}
+          setIsOpen={setHealMinigameOpen}
+        />
+      </DitheredOverlay>
 
-            {/* Pet stats header */}
+      <DitheredOverlay
+        isOpen={feedMinigameOpen}
+        onClose={() => setFeedMinigameOpen(false)}
+      >
+        <FeedMinigame
+          isOpen={feedMinigameOpen}
+          setIsOpen={setFeedMinigameOpen}
+        />
+      </DitheredOverlay>
+
+      <DitheredOverlay
+        isOpen={playMinigameOpen}
+        onClose={() => setPlayMinigameOpen(false)}
+      >
+        <PlayMinigame
+          isOpen={playMinigameOpen}
+          setIsOpen={setPlayMinigameOpen}
+        />
+      </DitheredOverlay>
+
+      {/* Top bar: Menu + toggle */}
+      <div className="flex justify-between items-center p-4 pb-0 w-full">
+        <Menu page="play" />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setGraphVisible(!graphVisible)}
+            className="text-xs text-zinc-400 hover:text-zinc-700 border border-zinc-300 px-2 py-0.5 hover:bg-zinc-100 whitespace-nowrap hidden lg:block"
+          >
+            {graphVisible ? "hide details" : "show details"}
+          </button>
+          <button
+            onClick={() => setGraphVisible(!graphVisible)}
+            className="text-xs text-zinc-400 hover:text-zinc-700 border border-zinc-300 px-2 py-0.5 hover:bg-zinc-100 whitespace-nowrap lg:hidden"
+          >
+            {graphVisible ? "hide details" : "show details"}
+          </button>
+        </div>
+      </div>
+
+      {/* Main layout — both columns start at the same level */}
+      <div className="flex flex-col lg:flex-row gap-4 px-4 pb-4 pt-2 w-full">
+        {/* LEFT COLUMN: Gameplay */}
+        <div
+          className={`flex flex-col gap-2 w-full ${graphVisible ? "lg:w-1/2 lg:max-w-2xl" : "lg:max-w-4xl lg:mx-auto"}`}
+        >
+          {/* Pet stats header */}
+          <motion.div
+            key="stats"
+            className="w-full pointer-events-none"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Header
+              onHealClick={() => setHealMinigameOpen(true)}
+              onFeedClick={() => setFeedMinigameOpen(true)}
+              onPlayClick={() => setPlayMinigameOpen(true)}
+            />
+          </motion.div>
+
+          {/* Pet viewport */}
+          <Viewport />
+
+          {/* Dialog / content area */}
+          <AnimatePresence>
             <motion.div
-              key="stats"
-              className="w-full pointer-events-none"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, y: 10 }}
+              transition={{ duration: 0.2, delay: 0.2 }}
+              className="flex flex-col gap-2 w-full"
             >
-              <Header
-                onHealClick={() => setHealMinigameOpen(true)}
-                onFeedClick={() => setFeedMinigameOpen(true)}
-                onPlayClick={() => setPlayMinigameOpen(true)}
-              />
-            </motion.div>
+              {isRip && (
+                <Window title={`${pet.name} has been decommissioned :(`}>
+                  <div className="flex flex-col p-3">
+                    <p>
+                      maybe you should take better care of your finance agent
+                      next time...
+                    </p>
+                    <a href="/create" className="underline">
+                      recruit a new agent
+                    </a>
+                  </div>
+                </Window>
+              )}
 
-            {/* Pet viewport */}
-            <Viewport />
-
-            {/* Finance stats + content */}
-            <div className="flex sm:flex-row flex-col gap-2 w-full">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.1 }}
-                className="sm:max-w-3xs"
-              >
-                <div className="border-2 border-black p-2 bg-zinc-100 mb-2 w-full">
-                  <MoralStats moralStats={pet.moralStats} />
-                </div>
-              </motion.div>
-              <AnimatePresence>
+              {hasGraduated && !isRip && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  key="graduated"
+                  initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  transition={{ duration: 0.2, delay: 0.2 }}
-                  className="flex flex-col gap-2 w-full"
+                  transition={{ duration: 0.5 }}
+                  className="w-full"
                 >
-                  {hasGraduated && (
-                    <motion.div
-                      key="graduated"
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="w-full"
-                    >
-                      <Window title="promotion time!">
-                        <div className="flex flex-col gap-1 p-3">
-                          <p>
-                            congratulations! after {pet.dilemmas.length}{" "}
-                            dilemmas, {pet.name} has earned a promotion and is
-                            ready for the next challenge.
-                          </p>
-                          <a
-                            onClick={() => setGraduationOpen(true)}
-                            className="underline"
-                          >
-                            collect promotion certificate
-                          </a>
-                          <a href="/dossiers" className="underline">
-                            view agent dossiers
-                          </a>
-                          <a href="/create" className="underline">
-                            adopt a new finance pet
-                          </a>
-                        </div>
-                      </Window>
-                    </motion.div>
-                  )}
-                  <Content
-                    healMinigameOpen={healMinigameOpen}
-                    feedMinigameOpen={feedMinigameOpen}
-                    playMinigameOpen={playMinigameOpen}
-                    setHealMinigameOpen={setHealMinigameOpen}
-                    setFeedMinigameOpen={setFeedMinigameOpen}
-                    setPlayMinigameOpen={setPlayMinigameOpen}
-                  />
+                  <Window title="promotion time!">
+                    <div className="flex flex-col gap-1 p-3">
+                      <p>
+                        congratulations! after {pet.dilemmas.length} scenarios,{" "}
+                        {pet.name} has earned a promotion.
+                      </p>
+                      <a
+                        onClick={() => setGraduationOpen(true)}
+                        className="underline cursor-pointer"
+                      >
+                        collect promotion certificate
+                      </a>
+                      <a href="/dossiers" className="underline">
+                        view agent dossiers
+                      </a>
+                      <a href="/create" className="underline">
+                        recruit a new agent
+                      </a>
+                    </div>
+                  </Window>
                 </motion.div>
-              </AnimatePresence>
-            </div>
-          </div>
+              )}
 
-          {/* RIGHT COLUMN: Graph Panel */}
-          <div className="w-full lg:w-1/2 lg:min-h-[600px] min-h-[350px]">
-            <GraphPanel />
-          </div>
+              {!isRip && <Dialog />}
+            </motion.div>
+          </AnimatePresence>
         </div>
-      </AnimatePresence>
+
+        {/* RIGHT COLUMN: Details (collapsible) */}
+        {graphVisible && (
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            transition={{ duration: 0.2 }}
+            className="w-full lg:w-1/2 flex flex-col gap-2"
+          >
+            {/* Agent personality — bar style matching Header */}
+            <div className="flex flex-col gap-1">
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">agent personality</h3>
+              <div className="border-2 border-black bg-white">
+                <MoralStats moralStats={pet.moralStats} />
+              </div>
+            </div>
+
+            {/* Agent memory graph */}
+            <div className="flex flex-col gap-1 flex-1 min-h-[350px] lg:min-h-[450px]">
+              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">agent memory graph</h3>
+              <div className="flex-1">
+                <GraphPanel />
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </div>
     </>
   );
 }

@@ -211,6 +211,10 @@ export default function GraphPanel() {
       maxZoom: 3,
       minZoom: 0.3,
       wheelSensitivity: 0.3,
+      autoungrabify: false,
+      userPanningEnabled: true,
+      userZoomingEnabled: true,
+      boxSelectionEnabled: false,
     });
 
     // Tooltip on hover
@@ -248,25 +252,26 @@ export default function GraphPanel() {
       transition={{ duration: 0.3, delay: 0.2 }}
       className="flex flex-col gap-2 w-full h-full"
     >
-      {/* Graph container — retro Window style */}
-      <Window title={`memory graph — ${neighborhood?.nodes.length || 0} nodes`}>
-        <div className="relative flex-1 min-h-[300px] bg-zinc-100">
-          <div ref={containerRef} className="w-full h-full min-h-[300px]" />
-          {tooltip && (
-            <div
-              className="absolute bg-white border-2 border-black px-2 py-1 text-xs pointer-events-none z-20"
-              style={{ left: tooltip.x, top: tooltip.y }}
-            >
-              {tooltip.text}
-            </div>
-          )}
-          {!neighborhood && !overlay && (
-            <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">
-              advise your agent to explore the knowledge graph
-            </div>
-          )}
+      {/* Graph container */}
+      <div className="border-2 border-black bg-zinc-100 relative" style={{ height: "400px" }}>
+        <div ref={containerRef} className="w-full" style={{ height: "100%" }} />
+        {tooltip && (
+          <div
+            className="absolute bg-white border-2 border-black px-2 py-1 text-xs pointer-events-none z-20"
+            style={{ left: tooltip.x, top: tooltip.y }}
+          >
+            {tooltip.text}
+          </div>
+        )}
+        {!neighborhood && !overlay && (
+          <div className="absolute inset-0 flex items-center justify-center text-zinc-500 text-sm">
+            advise your agent to explore the knowledge graph
+          </div>
+        )}
+        <div className="absolute bottom-1 right-2 text-[10px] text-zinc-400">
+          {neighborhood?.nodes.length || 0} nodes
         </div>
-      </Window>
+      </div>
 
       {/* Evidence panel */}
       {evidence.length > 0 && (

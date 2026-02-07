@@ -114,12 +114,26 @@ class PetStore:
     def list_interactions(self, pet_id: str, limit: int = 10) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT id, question, created_at FROM interactions WHERE pet_id = ? ORDER BY created_at DESC LIMIT ?",
+                "SELECT id, question, answer_json, created_at FROM interactions WHERE pet_id = ? ORDER BY created_at DESC LIMIT ?",
                 (pet_id, limit),
             ).fetchall()
-            return [
-                {"id": r[0], "question": r[1], "created_at": r[2]} for r in rows
-            ]
+            items = []
+            for r in rows:
+                decision = None
+                try:
+                    answer = json.loads(r[2])
+                    decision = answer.get("decision")
+                except Exception:
+                    decision = None
+                items.append(
+                    {
+                        "id": r[0],
+                        "question": r[1],
+                        "decision": decision,
+                        "timestamp": r[3],
+                    }
+                )
+            return items
 
     def update_stats(self, pet_id: str, action: str) -> dict[str, int]:
         current = self.get_pet(pet_id)
@@ -197,6 +211,7 @@ class PetStore:
                         "label": rel,
                         "weight": weight,
                         "meta": meta,
+                        "isOverlay": True,
                     }
                 )
             conn.commit()

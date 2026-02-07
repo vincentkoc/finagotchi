@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from typing import Any
+import ast
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
@@ -40,6 +41,17 @@ def to_evidence(points: list[qdrant_models.ScoredPoint]) -> list[dict[str, Any]]
                 break
         if text is None:
             text = str(payload)[:800]
+        # Attempt to parse dict-like text into structured fields
+        parsed = None
+        if isinstance(text, str) and text.startswith("{") and text.endswith("}"):
+            try:
+                parsed = ast.literal_eval(text)
+            except Exception:
+                parsed = None
+        if parsed and isinstance(parsed, dict):
+            payload = dict(payload)
+            payload["parsed"] = parsed
+
         evidence.append(
             {
                 "id": f"qdrant:{settings.qdrant_collection}:{p.id}",

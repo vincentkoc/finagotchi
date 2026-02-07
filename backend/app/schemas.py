@@ -26,7 +26,9 @@ class GraphNode(BaseModel):
     id: str
     label: str | None = None
     group: str | None = None
+    type: str | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
+    properties: dict[str, Any] | None = None
 
 
 class GraphEdge(BaseModel):
@@ -36,6 +38,7 @@ class GraphEdge(BaseModel):
     label: str | None = None
     weight: float | None = None
     meta: dict[str, Any] = Field(default_factory=dict)
+    isOverlay: bool | None = None
 
 
 class GraphBundle(BaseModel):
@@ -56,6 +59,7 @@ class QAResponse(BaseModel):
     evidence_bundle: list[EvidenceItem]
     neighborhood_graph: GraphBundle
     overlay_graph: GraphBundle
+    graph_combined: GraphBundle | None = None
     pet_stats: dict[str, int]
     interaction_id: str
 
@@ -70,6 +74,7 @@ class FeedbackRequest(BaseModel):
 
 class FeedbackResponse(BaseModel):
     pet_stats: dict[str, int]
+    updated_pet_stats: dict[str, int] | None = None
     overlay_graph_delta: GraphBundle
     new_path: str | None = None
 

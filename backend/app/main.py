@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import time
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, Body
+import logging
 import httpx
 import json
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,7 +33,18 @@ from .docstrings import (
 )
 
 setup_logging()
-app = FastAPI(docs_url="/", redoc_url="/redoc")
+logger = logging.getLogger("finagotchi.api")
+app = FastAPI(
+    title="Finagotchi API",
+    description=(
+        "Memory-aware finance/ops agent backend. "
+        "Provides Qdrant retrieval, Kuzu neighborhood graphs, "
+        "pet state updates, and local GGUF inference."
+    ),
+    version="0.1.0",
+    docs_url="/",
+    redoc_url="/redoc",
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -60,6 +72,16 @@ def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "time": str(time.time())}
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.time()
+    response = await call_next(request)
+    duration_ms = int((time.time() - start) * 1000)
+    if request.url.path in {"/qa", "/feedback"}:
+        logger.info("%s %s %s %sms", request.method, request.url.path, response.status_code, duration_ms)
+    return response
 
 
 @app.get("/health/models")
@@ -128,7 +150,7 @@ def next_dilemma() -> DilemmaResponse:
     tags=["Core"],
     responses={200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}},
 )
-def qa(req: QARequest) -> QAResponse:
+def qa(req: QARequest = Body(..., example=QA_EXAMPLE_REQUEST)) -> QAResponse:
     pet = pet_store.get_pet(req.pet_id)
 
     query_vec = llm.embed(req.question)
@@ -140,29 +162,54 @@ def qa(req: QARequest) -> QAResponse:
         [f"[{e['id']}] {e['text'][:400]}" for e in evidence]
     )
 
+    # Guardrail: if evidence lacks key finance fields, flag by default.
+    has_finance_signal = False
+    for item in evidence:
+        meta = item.get("meta", {})
+        parsed = meta.get("parsed") if isinstance(meta, dict) else None
+        if isinstance(parsed, dict) and (
+            parsed.get("vendor_id")
+            or parsed.get("invoice_number")
+            or parsed.get("transaction_id")
+        ):
+            has_finance_signal = True
+            break
+
     system_prompt = (
-        "You are a finance/ops auditor agent. Answer using the evidence. "
+        "You are a finance/ops auditor agent. Use ONLY the provided evidence. "
+        "If the question is unrelated to invoices, vendors, payments, or procurement, "
+        "respond with decision=flag and explain lack of relevant evidence. "
         "Return strict JSON only with schema: "
         "{decision, confidence, rationale, evidence_ids, overlay_edges}."
     )
     user_prompt = (
         f"Question: {req.question}\n\nEvidence:\n{evidence_snippets}\n\n"
-        "Decide approve|flag|reject|escalate. Include evidence_ids from the evidence list."
+        "Decide approve|flag|reject|escalate. "
+        "Use evidence_ids from the evidence list only."
     )
 
-    answer = llm.chat_json(
-        [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_prompt},
-        ]
-    )
+    if has_finance_signal:
+        answer = llm.chat_json(
+            [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+        )
+    else:
+        answer = {
+            "decision": "flag",
+            "confidence": 0.2,
+            "rationale": "No finance/ops evidence found for this question. Flagging for review.",
+            "evidence_ids": [e["id"] for e in evidence],
+            "overlay_edges": [],
+        }
 
     # Normalize answer
     answer_json = AnswerJSON(
         decision=answer.get("decision", "flag"),
         confidence=float(answer.get("confidence", 0.5)),
         rationale=answer.get("rationale", ""),
-        evidence_ids=answer.get("evidence_ids", [e["id"] for e in evidence]),
+        evidence_ids=[e["id"] for e in evidence],
         overlay_edges=answer.get("overlay_edges", []),
     )
 
@@ -178,11 +225,46 @@ def qa(req: QARequest) -> QAResponse:
     if not neighborhood.get("nodes"):
         neighborhood = build_graph_from_evidence(evidence, anchors)
 
+    def _normalize_graph(bundle: dict) -> GraphBundle:
+        nodes = []
+        for n in bundle.get("nodes", []):
+            nodes.append(
+                {
+                    "id": n.get("id"),
+                    "label": n.get("label"),
+                    "type": n.get("type") or n.get("group"),
+                    "group": n.get("group"),
+                    "meta": n.get("meta", {}),
+                    "properties": n.get("properties") or n.get("meta", {}),
+                }
+            )
+        edges = []
+        for e in bundle.get("edges", []):
+            edges.append(
+                {
+                    "id": e.get("id"),
+                    "source": e.get("source"),
+                    "target": e.get("target"),
+                    "label": e.get("label"),
+                    "weight": e.get("weight"),
+                    "meta": e.get("meta", {}),
+                    "isOverlay": e.get("isOverlay"),
+                }
+            )
+        return GraphBundle(nodes=nodes, edges=edges)
+
+    # Combined graph for convenience
+    combined = {
+        "nodes": neighborhood.get("nodes", []) + overlay_graph.get("nodes", []),
+        "edges": neighborhood.get("edges", []) + overlay_graph.get("edges", []),
+    }
+
     return QAResponse(
         answer_json=answer_json,
         evidence_bundle=evidence,
-        neighborhood_graph=GraphBundle(**neighborhood),
-        overlay_graph=GraphBundle(**overlay_graph),
+        neighborhood_graph=_normalize_graph(neighborhood),
+        overlay_graph=_normalize_graph(overlay_graph),
+        graph_combined=_normalize_graph(combined),
         pet_stats=pet["stats"],
         interaction_id=interaction_id,
     )
@@ -195,7 +277,7 @@ def qa(req: QARequest) -> QAResponse:
     tags=["Core"],
     responses={200: {"content": {"application/json": {"example": FEEDBACK_EXAMPLE_RESPONSE}}}},
 )
-def feedback(req: FeedbackRequest) -> FeedbackResponse:
+def feedback(req: FeedbackRequest = Body(..., example=FEEDBACK_EXAMPLE_REQUEST)) -> FeedbackResponse:
     pet_id = pet_store.get_interaction_pet(req.interaction_id) or "default"
     pet_stats = pet_store.update_stats(pet_id, req.action)
     new_path = pet_store.maybe_evolve(pet_id)
@@ -216,6 +298,7 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
 
     return FeedbackResponse(
         pet_stats=pet_stats,
+        updated_pet_stats=pet_stats,
         overlay_graph_delta=GraphBundle(
             nodes=_nodes_from_edges(overlay_delta),
             edges=overlay_delta,
@@ -248,3 +331,20 @@ def pet(pet_id: str = "default") -> PetResponse:
 def graph_neighborhood(entity_id: str, depth: int = 2) -> dict[str, object]:
     anchors = {"vendor_id": {entity_id}, "transaction_id": set(), "sku": set()}
     return kuzu.neighborhood(anchors, depth=depth)
+
+
+@app.get(
+    "/graph/sample",
+    summary="Debug sample graph nodes",
+    tags=["Graph"],
+)
+def graph_sample() -> dict[str, object]:
+    # Return a small sample by using recent evidence from Qdrant
+    points = search(qdrant, llm.embed("invoice vendor payment"))
+    evidence = to_evidence(points)
+    anchors = extract_anchors(evidence)
+    anchors["chunk_id"] = anchors.get("chunk_id", set())
+    neighborhood = kuzu.neighborhood(anchors, depth=1)
+    if not neighborhood.get("nodes"):
+        neighborhood = build_graph_from_evidence(evidence, anchors)
+    return neighborhood
