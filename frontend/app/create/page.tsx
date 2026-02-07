@@ -72,7 +72,7 @@ function Content() {
         exit={{ opacity: 0, y: -20 }}
         transition={{ duration: 0.3 }}
       >
-        <Background backgroundSrcs={["/uwantahand.png"]}>
+        <Background backgroundSrcs={["/hands.png"]}>
           <Image
             src="/egg.gif"
             alt="egg"
@@ -86,7 +86,7 @@ function Content() {
         <WindowTextarea
           title="new recruit! ( ˶°ㅁ°) ! ! !"
           exitable={false}
-          placeholder="give it a finance name like uh... penny."
+          placeholder="give it a finance name like uh... penny or moneybags...?."
           handleSubmit={handleSubmit}
         >
           <p>
