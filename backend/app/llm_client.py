@@ -79,14 +79,29 @@ class LLMClient:
                 extracted = _extract_json(fixed)
                 if extracted is not None:
                     return extracted
-                # final fallback
+                # Final fallback — use the raw LLM text as rationale
+                # so the user still gets useful analysis
+                rationale = content.strip()[:300] if content.strip() else "Unable to parse response. Flagging for manual review."
+                decision = _infer_decision(rationale)
                 return {
-                    "decision": "flag",
-                    "confidence": 0.3,
-                    "rationale": "Model returned invalid JSON; defaulting to flag.",
+                    "decision": decision,
+                    "confidence": 0.5,
+                    "rationale": rationale,
                     "evidence_ids": [],
                     "overlay_edges": [],
                 }
+
+
+def _infer_decision(text: str) -> str:
+    """Try to guess the decision from raw LLM text."""
+    lower = text.lower()
+    if "approve" in lower:
+        return "approve"
+    if "reject" in lower:
+        return "reject"
+    if "escalat" in lower:
+        return "escalate"
+    return "flag"
 
 
 def _extract_json(text: str) -> dict[str, Any] | None:

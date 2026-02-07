@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from "react";
 import { motion } from "framer-motion";
-import type { GraphData, GraphNode, GraphEdge, EvidenceItem } from "@/lib/api";
-import Window from "@/components/Window";
+import type { GraphData, GraphNode, GraphEdge } from "@/lib/api";
 
 // Cytoscape is loaded dynamically to avoid SSR issues
 import type cytoscape_static from "cytoscape";
@@ -150,7 +149,6 @@ export default function GraphPanel() {
   const cyRef = useRef<CyCore | null>(null);
   const [neighborhood, setNeighborhood] = useState<GraphData | null>(SEED_GRAPH);
   const [overlay, setOverlay] = useState<GraphData | null>(null);
-  const [evidence, setEvidence] = useState<EvidenceItem[]>([]);
   const [tooltip, setTooltip] = useState<{
     text: string;
     x: number;
@@ -165,23 +163,10 @@ export default function GraphPanel() {
       if (detail.overlay) setOverlay(detail.overlay);
     };
 
-    const handleEvidenceUpdate = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (Array.isArray(detail)) setEvidence(detail);
-    };
-
     window.addEventListener("finagotchi:graph-update", handleGraphUpdate);
-    window.addEventListener(
-      "finagotchi:evidence-update",
-      handleEvidenceUpdate
-    );
 
     return () => {
       window.removeEventListener("finagotchi:graph-update", handleGraphUpdate);
-      window.removeEventListener(
-        "finagotchi:evidence-update",
-        handleEvidenceUpdate
-      );
     };
   }, []);
 
@@ -277,32 +262,6 @@ export default function GraphPanel() {
           {neighborhood?.nodes.length || 0} nodes
         </div>
       </div>
-
-      {/* Evidence panel */}
-      {evidence.length > 0 && (
-        <Window title="evidence trail">
-          <div className="p-2 max-h-40 overflow-y-auto">
-            {evidence.slice(0, 5).map((item, i) => {
-              // Show short ID (last segment of qdrant:collection:uuid)
-              const shortId = item.id?.split(":").pop()?.slice(0, 8) || `${i}`;
-              return (
-                <div
-                  key={item.id || i}
-                  className="text-xs border-b border-zinc-200 py-1 last:border-0"
-                >
-                  <span className="font-bold font-mono text-zinc-500">
-                    [{shortId}]
-                  </span>{" "}
-                  <span className="text-zinc-700">
-                    {item.text.slice(0, 150)}
-                    {item.text.length > 150 ? "..." : ""}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </Window>
-      )}
 
       {/* Legend */}
       <div className="flex gap-3 text-xs text-zinc-500 px-1 flex-wrap">

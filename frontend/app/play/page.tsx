@@ -17,6 +17,7 @@ import PlayMinigame from "./components/Header/PlayMinigame";
 import Outcome from "./components/Outcome";
 import Graduation from "./components/Graduation";
 import GraphPanel from "./components/GraphPanel";
+import EvidenceTrail from "./components/EvidenceTrail";
 import { EvolutionId } from "@/constants/evolutions";
 
 // Dithered overlay for minigame modals
@@ -198,63 +199,80 @@ export default function Play() {
           </AnimatePresence>
         </div>
 
-        {/* Row 3: Dialog / content — left side only */}
-        <div className="w-full lg:w-1/2">
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
-              transition={{ duration: 0.2, delay: 0.2 }}
-              className="flex flex-col gap-2 w-full"
-            >
-              {isRip && (
-                <Window title={`${pet.name} has been decommissioned :(`}>
-                  <div className="flex flex-col p-3">
-                    <p>
-                      maybe you should take better care of your finance agent
-                      next time...
-                    </p>
-                    <a href="/create" className="underline">
-                      recruit a new agent
-                    </a>
-                  </div>
-                </Window>
-              )}
-
-              {hasGraduated && !isRip && (
-                <motion.div
-                  key="graduated"
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5 }}
-                  className="w-full"
-                >
-                  <Window title="promotion time!">
-                    <div className="flex flex-col gap-1 p-3">
+        {/* Row 3: Dialog + Evidence trail */}
+        <div className="flex flex-col lg:flex-row gap-2">
+          <div className="w-full lg:w-1/2">
+            <AnimatePresence>
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                transition={{ duration: 0.2, delay: 0.2 }}
+                className="flex flex-col gap-2 w-full"
+              >
+                {isRip && (
+                  <Window title={`${pet.name} has been decommissioned :(`}>
+                    <div className="flex flex-col p-3">
                       <p>
-                        congratulations! after {pet.dilemmas.length} scenarios,{" "}
-                        {pet.name} has earned a promotion.
+                        maybe you should take better care of your finance agent
+                        next time...
                       </p>
-                      <a
-                        onClick={() => setGraduationOpen(true)}
-                        className="underline cursor-pointer"
-                      >
-                        collect promotion certificate
-                      </a>
-                      <a href="/dossiers" className="underline">
-                        view agent dossiers
-                      </a>
                       <a href="/create" className="underline">
                         recruit a new agent
                       </a>
                     </div>
                   </Window>
-                </motion.div>
-              )}
+                )}
 
-              {!isRip && <Dialog />}
-            </motion.div>
+                {hasGraduated && !isRip && (
+                  <motion.div
+                    key="graduated"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="w-full"
+                  >
+                    <Window title="promotion time!">
+                      <div className="flex flex-col gap-1 p-3">
+                        <p>
+                          congratulations! after {pet.dilemmas.length}{" "}
+                          scenarios, {pet.name} has earned a promotion.
+                        </p>
+                        <a
+                          onClick={() => setGraduationOpen(true)}
+                          className="underline cursor-pointer"
+                        >
+                          collect promotion certificate
+                        </a>
+                        <a href="/dossiers" className="underline">
+                          view agent dossiers
+                        </a>
+                        <a href="/create" className="underline">
+                          recruit a new agent
+                        </a>
+                      </div>
+                    </Window>
+                  </motion.div>
+                )}
+
+                {!isRip && <Dialog />}
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <AnimatePresence>
+            {detailsVisible && (
+              <motion.div
+                key="evidence"
+                className="w-full lg:w-1/2"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ duration: 0.2, delay: 0.1 }}
+              >
+                <EvidenceTrail />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
       </div>

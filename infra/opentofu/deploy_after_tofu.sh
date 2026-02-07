@@ -36,7 +36,7 @@ ssh root@"$BACKEND_IP" "REPO_URL=$REPO_URL_LOCAL; \
   ./scripts/bootstrap_backend_gpu.sh"
 
 echo "[info] Frontend IP: $FRONTEND_IP"
-ssh root@"$FRONTEND_IP" "REPO_URL=$REPO_URL_LOCAL API_URL=$API_URL; \
+ssh root@"$FRONTEND_IP" "REPO_URL=$REPO_URL_LOCAL API_URL=$API_URL; export API_URL; \
   if [ ! -d finagotchi ]; then git clone \"\$REPO_URL\"; fi; \
   cd finagotchi; \
   git fetch --all --prune; \

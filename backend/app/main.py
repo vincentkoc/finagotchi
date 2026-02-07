@@ -354,16 +354,18 @@ def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QARespons
             break
 
     system_prompt = (
-        "You are a finance/ops auditor agent. Use ONLY the provided evidence. "
-        "If the question is unrelated to invoices, vendors, payments, or procurement, "
-        "respond with decision=flag and explain lack of relevant evidence. "
-        "Return strict JSON only with schema: "
-        "{decision, confidence, rationale, evidence_ids, overlay_edges}."
+        "You are a finance/ops auditor agent. Analyze the evidence and return a JSON decision.\n"
+        "Example response:\n"
+        '{"decision":"flag","confidence":0.7,"rationale":"Amount exceeds vendor average by 3x.","evidence_ids":[],"overlay_edges":[]}\n\n'
+        "Rules:\n"
+        "- decision must be one of: approve, flag, reject, escalate\n"
+        "- confidence is 0.0 to 1.0\n"
+        "- rationale is a brief explanation (1-2 sentences)\n"
+        "- Return ONLY valid JSON, no other text"
     )
     user_prompt = (
         f"Question: {req.question}\n\nEvidence:\n{evidence_snippets}\n\n"
-        "Decide approve|flag|reject|escalate. "
-        "Use evidence_ids from the evidence list only."
+        "Analyze the evidence and return your JSON decision."
     )
 
     if has_finance_signal:

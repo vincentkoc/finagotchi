@@ -1,12 +1,15 @@
-import { useEffect, useState } from "react";
+"use client";
 
-// check if it's a mobile device
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+import { useEffect, useState } from "react";
 
 export default function HoverText({ hoverText }: { hoverText: string | null }) {
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
+    if (typeof navigator !== "undefined") {
+      setIsMobile(/iPhone|iPad|iPod|Android/i.test(navigator.userAgent));
+    }
     const updateMousePosition = (ev: MouseEvent): void => {
       setMousePosition({ x: ev.clientX, y: ev.clientY });
     };

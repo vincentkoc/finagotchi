@@ -137,7 +137,7 @@ const Viewport = React.memo(function Viewport() {
       <Background
         hasOverlay
         isAlmostDead={isAlmostDead}
-        backgroundSrcs={["/background.png", "/trees.gif"]}
+        backgroundSrcs={["/background.png"]}
       >
         <div className="relative">
           <div className="relative">
