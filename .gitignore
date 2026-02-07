@@ -19,3 +19,4 @@ __pycache__/
 /external/grey
 .next/trace
 .next/trace-build
+backend/pet_state.db
