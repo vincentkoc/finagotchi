@@ -92,3 +92,9 @@ export const updatePet = (id: string, updates: Partial<Pet>): Pet | null => {
   debouncedSave("pets", pets);
   return updatedPet;
 };
+
+export const clearPets = (): void => {
+  localStorage.removeItem("pets");
+  localStorage.removeItem("poos");
+  localStorage.removeItem(EGG_CRACK_SHOWN_KEY);
+};

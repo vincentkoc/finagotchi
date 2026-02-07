@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Dossiers from "./components/Dossiers";
-import { getPets, Pet } from "../storage/pet";
+import { getPets, clearPets, Pet } from "../storage/pet";
 import Graduation from "../play/components/Graduation";
 import { useRouter } from "next/navigation";
 
@@ -32,15 +32,30 @@ export default function DossiersPage() {
     );
   }
 
+  const handleClear = () => {
+    if (window.confirm("wipe all agent records? this cannot be undone.")) {
+      clearPets();
+      setPets([]);
+    }
+  };
+
   return (
     <div className="flex flex-col items-center justify-center p-4 sm:p-0 sm:w-xl w-full">
-      <div className="flex flex-col items-center justify-center pb-2">
+      <div className="flex items-center justify-center gap-4 pb-2">
         <a
           className="text-zinc-500 underline hover:text-white hover:bg-zinc-500 cursor-pointer"
           onClick={() => router.push("/play")}
         >
           back to operations
         </a>
+        {pets.length > 0 && (
+          <button
+            onClick={handleClear}
+            className="text-xs text-red-400 hover:text-red-600 underline cursor-pointer"
+          >
+            clear all records
+          </button>
+        )}
       </div>
       <Dossiers pets={pets} setSelectedPet={setSelectedPet} />
       {selectedPet && (

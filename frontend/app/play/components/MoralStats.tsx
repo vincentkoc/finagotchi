@@ -1,53 +1,51 @@
-import { getFinanceStatsWritten, FinanceStatsType } from "@/constants/morals";
-import { motion, AnimatePresence } from "framer-motion";
+import { FinanceStatKeys, FinanceStatsType, attributes } from "@/constants/morals";
+
+const STAT_ORDER: FinanceStatKeys[] = [
+  FinanceStatKeys.risk,
+  FinanceStatKeys.compliance,
+  FinanceStatKeys.thriftiness,
+  FinanceStatKeys.anomaly_sensitivity,
+];
 
 export function MoralStats({
   moralStats,
 }: {
   moralStats: FinanceStatsType;
 }) {
-  const statsWritten = getFinanceStatsWritten(moralStats);
-
   return (
-    <div
-      className="flex flex-col text-right sm:w-50 min-h-30 text-lg"
-      style={{ zIndex: -2 }}
-    >
-      <AnimatePresence mode="popLayout">
-        {statsWritten.length ? (
-          statsWritten.map(({ key, description, percentage }) => (
-            <motion.span
-              key={key}
-              layout
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              title={`${Math.round(percentage)}%`}
-              className={`${
-                percentage >= 50
-                  ? "text-teal-700"
-                  : percentage >= 25
-                    ? "text-zinc-700"
-                    : percentage >= 10
-                      ? "text-zinc-500"
-                      : "text-zinc-400"
-              }`}
-            >
-              {description} {Math.round(percentage)}%
-            </motion.span>
-          ))
-        ) : (
-          <motion.span
-            layout
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="text-zinc-700 animate-pulse no-select"
+    <div className="flex flex-col w-full">
+      {STAT_ORDER.map((key, index) => {
+        const value = moralStats[key];
+        const attr = attributes[key];
+        const label = value > 50 ? attr.high : attr.low;
+        const isLast = index === STAT_ORDER.length - 1;
+
+        return (
+          <div
+            key={key}
+            className={`flex items-center w-full ${!isLast ? "border-b-2" : ""}`}
+            style={{ height: "2.25rem" }}
           >
-            calibrating sensors...
-          </motion.span>
-        )}
-      </AnimatePresence>
+            {/* Stat label */}
+            <div className="w-24 shrink-0 text-xs text-zinc-600 px-2 truncate border-r-2 h-full flex items-center bg-zinc-100">
+              {label}
+            </div>
+
+            {/* Bar fill */}
+            <div className="flex-1 h-full relative">
+              <div className="w-full h-full">
+                <div
+                  className="bg-zinc-500 h-full"
+                  style={{ width: `${value}%` }}
+                />
+              </div>
+              <div className="absolute right-2 top-0 h-full flex items-center">
+                <span className="text-xs text-zinc-700">{Math.round(value)}%</span>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
