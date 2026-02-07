@@ -17,7 +17,7 @@ export enum EvolutionId {
   BABY = "baby",
 
   // Stage 1
-  PENNY_PINCHER = "penny pincher",
+  PENNY_PINCHER = "penny pinscher",
   RULE_FOLLOWER = "rule follower",
   RISK_TAKER = "risk taker",
   WATCHDOG = "watchdog",

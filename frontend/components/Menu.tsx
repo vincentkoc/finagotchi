@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, forwardRef } from "react";
 
 const pathToText = {
-  play: "ops > control room",
+  play: "finagotchi",
   create: "recruitment desk",
   about: "about finagotchi",
   dossiers: "personnel records",
@@ -67,15 +67,14 @@ function ConfirmPopup({
 function MenuContent({
   page,
   showConfirmPopup,
+  isDark,
 }: {
   page: "play" | "create" | "dossiers" | "about";
   showConfirmPopup: () => void;
+  isDark: boolean;
 }) {
   const { pet } = usePet();
-
-  if (!pet) {
-    return null;
-  }
+  const hoverClass = isDark ? "hover:text-white" : "hover:text-zinc-800";
 
   if (page === "about" || page === "dossiers") {
     return (
@@ -92,7 +91,7 @@ function MenuContent({
         <AnimatePresence>
           <motion.a
             href="/play"
-            className="hover:text-zinc-800 no-drag"
+            className={`${hoverClass} no-drag`}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
@@ -102,6 +101,10 @@ function MenuContent({
         </AnimatePresence>
       </>
     );
+  }
+
+  if (!pet) {
+    return null;
   }
 
   return (
@@ -127,7 +130,7 @@ function MenuContent({
                 showConfirmPopup();
               }
             }}
-            className="hover:text-zinc-800 no-drag"
+            className={`${hoverClass} no-drag`}
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.3 }}
@@ -140,7 +143,7 @@ function MenuContent({
       <AnimatePresence>
         <motion.a
           href="/dossiers"
-          className="hover:text-zinc-800 no-drag"
+          className={`${hoverClass} no-drag`}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.4 }}
@@ -152,7 +155,7 @@ function MenuContent({
       <AnimatePresence>
         <motion.a
           href="/about"
-          className="hover:text-zinc-800 no-drag"
+          className={`${hoverClass} no-drag`}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.5 }}
@@ -175,10 +178,6 @@ const MobileMenu = forwardRef<
 >(({ page, isOpen, onClose, showConfirmPopup }, ref) => {
   const { pet } = usePet();
 
-  if (!pet) {
-    return null;
-  }
-
   const menuItems = [];
 
   if (page === "about" || page === "dossiers") {
@@ -195,7 +194,7 @@ const MobileMenu = forwardRef<
         back
       </motion.a>
     );
-  } else {
+  } else if (pet) {
     if (pet.name) {
       menuItems.push(
         <motion.a
@@ -252,16 +251,34 @@ const MobileMenu = forwardRef<
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          ref={ref}
-          className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black z-50 p-4"
-          initial={{ opacity: 0, y: 100 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 100 }}
-          transition={{ duration: 0.3 }}
-        >
-          <div className="text-zinc-500 text-lg">{menuItems}</div>
-        </motion.div>
+        <>
+          {/* Dithered backdrop */}
+          <motion.div
+            className="fixed inset-0 z-40"
+            onClick={onClose}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              backgroundColor: "rgba(0,0,0,0.4)",
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg width='4' height='4' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='0' y='0' width='2' height='2' fill='%23000' opacity='0.3'/%3E%3Crect x='2' y='2' width='2' height='2' fill='%23000' opacity='0.3'/%3E%3C/svg%3E\")",
+              backgroundSize: "4px 4px",
+            }}
+          />
+          {/* Menu panel */}
+          <motion.div
+            ref={ref}
+            className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-black z-50 p-4"
+            initial={{ opacity: 0, y: 100 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 100 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="text-zinc-500 text-lg">{menuItems}</div>
+          </motion.div>
+        </>
       )}
     </AnimatePresence>
   );
@@ -271,14 +288,19 @@ MobileMenu.displayName = "MobileMenu";
 
 export default function Menu({
   page,
+  variant = "default",
+  extra,
 }: {
   page: "play" | "create" | "dossiers" | "about";
+  variant?: "default" | "dark";
+  extra?: React.ReactNode;
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [confirmPopupOpen, setConfirmPopupOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
   const { pet } = usePet();
+  const isDark = variant === "dark";
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -316,34 +338,38 @@ export default function Menu({
 
   return (
     <>
-      <div className="w-full flex justify-between text-zinc-500 text-lg">
+      <div className={`w-full flex ${isDark ? "text-zinc-400" : "text-zinc-500"} text-lg`}>
         {/* Desktop Menu */}
-        <div className="hidden md:flex w-full justify-between">
-          <MenuContent page={page} showConfirmPopup={showConfirmPopup} />
+        <div className={`hidden md:flex w-full ${isDark ? "items-center gap-4" : "justify-between"}`}>
+          <MenuContent page={page} showConfirmPopup={showConfirmPopup} isDark={isDark} />
+          {extra && <span className="ml-auto">{extra}</span>}
         </div>
 
         {/* Mobile Menu Button */}
         <div
-          className="flex md:hidden w-full justify-between items-center relative"
+          className={`flex md:hidden w-full justify-between items-center relative`}
           ref={menuRef}
         >
-          <span className="ml-2 text-zinc-500">{`${pathToText[page]}`}</span>
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="border-2 w-8 h-8 flex flex-col items-center justify-center hover:bg-zinc-100"
-          >
-            <svg
-              width="16"
-              height="12"
-              viewBox="0 0 16 12"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
+          <span className={isDark ? "ml-2 text-zinc-400" : "ml-2 text-zinc-500"}>{`${pathToText[page]}`}</span>
+          <div className="flex items-center gap-2">
+            {extra}
+            <button
+              onClick={() => setMobileMenuOpen(true)}
+              className={`border-2 w-8 h-8 flex flex-col items-center justify-center ${isDark ? "border-zinc-600 hover:bg-zinc-800" : "hover:bg-zinc-100"}`}
             >
-              <rect width="16" height="2" fill="currentColor" />
-              <rect y="5" width="16" height="2" fill="currentColor" />
-              <rect y="10" width="16" height="2" fill="currentColor" />
-            </svg>
-          </button>
+              <svg
+                width="16"
+                height="12"
+                viewBox="0 0 16 12"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <rect width="16" height="2" fill="currentColor" />
+                <rect y="5" width="16" height="2" fill="currentColor" />
+                <rect y="10" width="16" height="2" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
 

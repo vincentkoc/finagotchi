@@ -17,7 +17,7 @@ export default function About() {
           <p>
             every decision you make shapes your agent&apos;s personality: will it
             become a vigilant auditor, a pragmatic risk-taker, or a meticulous
-            penny pincher? your choices are remembered and influence how the
+            penny pinscher? your choices are remembered and influence how the
             agent evolves.
           </p>
           <p className="text-zinc-500">

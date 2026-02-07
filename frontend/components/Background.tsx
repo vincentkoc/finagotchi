@@ -31,6 +31,7 @@ export function Background({
           width={VIEWPORT_WIDTH}
           height={VIEWPORT_HEIGHT}
           priority={true}
+          unoptimized={src.endsWith(".gif")}
           className={twMerge(
             "absolute w-full h-full transition-opacity duration-500 pointer-events-none object-cover",
             loadedImages.includes(src) ? "opacity-100" : "opacity-0"

@@ -30,158 +30,191 @@ class KuzuAdapter:
     def enabled(self) -> bool:
         return self._enabled
 
-    def neighborhood(
-        self, anchors: dict[str, set[str]], depth: int = 2
-    ) -> dict[str, Any]:
+    def neighborhood(self, anchors: dict[str, set[str]], depth: int = 2) -> dict[str, Any]:
         if not self._enabled or self._conn is None:
             return {"nodes": [], "edges": []}
 
-        # Kuzu DB built by scripts/build_kuzu_from_qdrant.py
         try:
             nodes: dict[str, dict[str, Any]] = {}
             edges: list[dict[str, Any]] = []
 
+            vendor_ids = anchors.get("vendor_id", set())
+            invoice_ids = anchors.get("transaction_id", set())
             chunk_ids = anchors.get("chunk_id", set())
-            if not chunk_ids:
-                return {"nodes": [], "edges": []}
 
-            for cid in list(chunk_ids)[:50]:
-                parsed = None
-                # Use evidence parsed fields if present in anchors
-                # (anchors don't carry parsed, so we derive label later)
-                # Get chunk node
-                chunk_res: Any = self._conn.execute(
-                    "MATCH (c:Chunk {chunk_id: $cid}) RETURN c LIMIT 1",
-                    {"cid": cid},
+            # Vendor-centered neighborhood
+            for vid in list(vendor_ids)[:20]:
+                res: Any = self._conn.execute(
+                    "MATCH (v:Vendor {vendor_id: $vid})-[:Issued]->(i:Invoice)-[:Contains]->(s:SKU) RETURN v,i,s LIMIT 50",
+                    {"vid": str(vid)},
                 )
-                if chunk_res.has_next():
-                    chunk_node = chunk_res.get_next()[0]
-                    label = cid
-                    try:
-                        text_val = getattr(chunk_node, "text", None)
-                        if (
-                            isinstance(text_val, str)
-                            and text_val.startswith("{")
-                            and text_val.endswith("}")
-                        ):
-                            import ast
+                while res.has_next():
+                    v, i, s = res.get_next()
+                    v_id = f"vendor:{getattr(v, 'vendor_id', vid)}"
+                    i_id = f"invoice:{getattr(i, 'invoice_id', '')}"
+                    s_id = f"sku:{getattr(s, 'sku', '')}"
 
-                            parsed = ast.literal_eval(text_val)
-                            if isinstance(parsed, dict):
-                                invoice = (
-                                    parsed.get("invoice_number")
-                                    or parsed.get("transaction_id")
-                                    or cid
-                                )
-                                total = parsed.get("total")
-                                due = parsed.get("due_date") or parsed.get("date")
-                                if total is not None:
-                                    label = f"{invoice} | ${total}"
-                                elif due is not None:
-                                    label = f"{invoice} | due {due}"
-                                else:
-                                    label = str(invoice)
-                    except Exception:
-                        label = cid
                     nodes.setdefault(
-                        f"chunk:{cid}",
+                        v_id,
                         {
-                            "id": f"chunk:{cid}",
-                            "label": label,
-                            "group": "Chunk",
-                            "type": "Chunk",
-                            "meta": {"text": getattr(chunk_node, "text", None)},
-                            "properties": {"text": getattr(chunk_node, "text", None)},
+                            "id": v_id,
+                            "label": f"Vendor {getattr(v, 'vendor_id', vid)}",
+                            "group": "Vendor",
+                            "type": "Vendor",
+                            "meta": {"vendor_id": getattr(v, 'vendor_id', vid)},
+                            "properties": {"vendor_id": getattr(v, 'vendor_id', vid)},
+                        },
+                    )
+                    nodes.setdefault(
+                        i_id,
+                        {
+                            "id": i_id,
+                            "label": f"{getattr(i, 'invoice_id', '')} | ${getattr(i, 'total', '')}",
+                            "group": "Invoice",
+                            "type": "Invoice",
+                            "meta": {"invoice_id": getattr(i, 'invoice_id', '')},
+                            "properties": {
+                                "invoice_id": getattr(i, 'invoice_id', ''),
+                                "total": getattr(i, 'total', None),
+                                "date": getattr(i, 'date', None),
+                                "due_date": getattr(i, 'due_date', None),
+                            },
+                        },
+                    )
+                    nodes.setdefault(
+                        s_id,
+                        {
+                            "id": s_id,
+                            "label": f"{getattr(s, 'sku', '')} | {getattr(s, 'product', '')}",
+                            "group": "SKU",
+                            "type": "SKU",
+                            "meta": {"sku": getattr(s, 'sku', '')},
+                            "properties": {"sku": getattr(s, 'sku', ''), "product": getattr(s, 'product', '')},
                         },
                     )
 
-                # Expand to entities via Mentions
-                rel_res: Any = self._conn.execute(
-                    "MATCH (c:Chunk {chunk_id: $cid})-[:Mentions]->(e:Entity) RETURN e, c LIMIT 50",
-                    {"cid": cid},
-                )
-                while rel_res.has_next():
-                    e, c = rel_res.get_next()
-                    eid = getattr(e, "entity_id", None)
-                    name = getattr(e, "name", None) or eid
-                    etype = getattr(e, "type", None)
-                    if eid is None:
-                        continue
-                    nodes.setdefault(
-                        f"entity:{eid}",
+                    edges.append(
                         {
-                            "id": f"entity:{eid}",
-                            "label": name,
-                            "group": etype or "Entity",
-                            "type": etype or "Entity",
-                            "meta": {"type": etype},
-                            "properties": {"type": etype},
-                        },
+                            "id": f"{v_id}->{i_id}",
+                            "source": v_id,
+                            "target": i_id,
+                            "label": "ISSUED",
+                            "weight": 1.0,
+                            "meta": {},
+                        }
                     )
                     edges.append(
                         {
-                            "id": f"chunk:{cid}->entity:{eid}",
-                            "source": f"chunk:{cid}",
-                            "target": f"entity:{eid}",
-                            "label": "MENTIONS",
+                            "id": f"{i_id}->{s_id}",
+                            "source": i_id,
+                            "target": s_id,
+                            "label": "CONTAINS",
                             "weight": 1.0,
                             "meta": {},
                         }
                     )
 
-                # Add vendor/transaction nodes from parsed chunk text if available
-                if parsed and isinstance(parsed, dict):
-                    vendor_id = parsed.get("vendor_id")
-                    txn_id = parsed.get("transaction_id") or parsed.get(
-                        "invoice_number"
-                    )
-                    if vendor_id is not None:
-                        vid = f"vendor:{vendor_id}"
+            # Invoice-centered neighborhood
+            for iid in list(invoice_ids)[:20]:
+                res = self._conn.execute(
+                    "MATCH (i:Invoice {invoice_id: $iid})-[:Contains]->(s:SKU) OPTIONAL MATCH (v:Vendor)-[:Issued]->(i) RETURN v,i,s LIMIT 50",
+                    {"iid": str(iid)},
+                )
+                while res.has_next():
+                    v, i, s = res.get_next()
+                    if v is not None:
+                        v_id = f"vendor:{getattr(v, 'vendor_id', '')}"
                         nodes.setdefault(
-                            vid,
+                            v_id,
                             {
-                                "id": vid,
-                                "label": f"Vendor {vendor_id}",
+                                "id": v_id,
+                                "label": f"Vendor {getattr(v, 'vendor_id', '')}",
                                 "group": "Vendor",
                                 "type": "Vendor",
-                                "meta": {},
-                                "properties": {"vendor_id": vendor_id},
+                                "meta": {"vendor_id": getattr(v, 'vendor_id', '')},
+                                "properties": {"vendor_id": getattr(v, 'vendor_id', '')},
+                            },
+                        )
+                    i_id = f"invoice:{getattr(i, 'invoice_id', iid)}"
+                    nodes.setdefault(
+                        i_id,
+                        {
+                            "id": i_id,
+                            "label": f"{getattr(i, 'invoice_id', iid)} | ${getattr(i, 'total', '')}",
+                            "group": "Invoice",
+                            "type": "Invoice",
+                            "meta": {"invoice_id": getattr(i, 'invoice_id', iid)},
+                            "properties": {
+                                "invoice_id": getattr(i, 'invoice_id', iid),
+                                "total": getattr(i, 'total', None),
+                                "date": getattr(i, 'date', None),
+                                "due_date": getattr(i, 'due_date', None),
+                            },
+                        },
+                    )
+                    if s is not None:
+                        s_id = f"sku:{getattr(s, 'sku', '')}"
+                        nodes.setdefault(
+                            s_id,
+                            {
+                                "id": s_id,
+                                "label": f"{getattr(s, 'sku', '')} | {getattr(s, 'product', '')}",
+                                "group": "SKU",
+                                "type": "SKU",
+                                "meta": {"sku": getattr(s, 'sku', '')},
+                                "properties": {"sku": getattr(s, 'sku', ''), "product": getattr(s, 'product', '')},
                             },
                         )
                         edges.append(
                             {
-                                "id": f"chunk:{cid}->{vid}",
-                                "source": f"chunk:{cid}",
-                                "target": vid,
-                                "label": "VENDOR",
+                                "id": f"{i_id}->{s_id}",
+                                "source": i_id,
+                                "target": s_id,
+                                "label": "CONTAINS",
                                 "weight": 1.0,
                                 "meta": {},
                             }
                         )
-                    if txn_id is not None:
-                        tid = f"txn:{txn_id}"
-                        label = str(txn_id)
-                        if isinstance(parsed, dict):
-                            total = parsed.get("total")
-                            if total is not None:
-                                label = f"{txn_id} | ${total}"
+
+            # Chunk fallback (if no vendor/invoice anchors)
+            if not nodes and chunk_ids:
+                for cid in list(chunk_ids)[:20]:
+                    res = self._conn.execute(
+                        "MATCH (c:Chunk {chunk_id: $cid})-[:Mentions]->(e:Entity) RETURN c,e LIMIT 50",
+                        {"cid": cid},
+                    )
+                    while res.has_next():
+                        c, e = res.get_next()
+                        c_id = f"chunk:{cid}"
+                        e_id = f"entity:{getattr(e, 'entity_id', '')}"
                         nodes.setdefault(
-                            tid,
+                            c_id,
                             {
-                                "id": tid,
-                                "label": label,
-                                "group": "Transaction",
-                                "type": "Transaction",
-                                "meta": {},
-                                "properties": {"transaction_id": str(txn_id)},
+                                "id": c_id,
+                                "label": cid,
+                                "group": "Chunk",
+                                "type": "Chunk",
+                                "meta": {"chunk_id": cid},
+                                "properties": {"chunk_id": cid},
+                            },
+                        )
+                        nodes.setdefault(
+                            e_id,
+                            {
+                                "id": e_id,
+                                "label": getattr(e, "name", None) or e_id,
+                                "group": getattr(e, "type", None) or "Entity",
+                                "type": getattr(e, "type", None) or "Entity",
+                                "meta": {"entity_id": getattr(e, "entity_id", None)},
+                                "properties": {"entity_id": getattr(e, "entity_id", None)},
                             },
                         )
                         edges.append(
                             {
-                                "id": f"chunk:{cid}->{tid}",
-                                "source": f"chunk:{cid}",
-                                "target": tid,
-                                "label": "TRANSACTION",
+                                "id": f"{c_id}->{e_id}",
+                                "source": c_id,
+                                "target": e_id,
+                                "label": "MENTIONS",
                                 "weight": 1.0,
                                 "meta": {},
                             }

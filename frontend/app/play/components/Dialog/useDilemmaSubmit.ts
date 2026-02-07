@@ -112,7 +112,12 @@ export function useDilemmaSubmit() {
           ];
         const confidence = 0.5 + Math.random() * 0.4;
 
-        const assistantMessage = `decision: ${decision} (confidence: ${Math.round(confidence * 100)}%)\n\n[offline mode] based on the available information, this transaction should be ${decision}ed. further review recommended when backend is available.\n\nevidence: [local analysis]`;
+        const decisionVerb =
+          decision === "approve" ? "approved"
+            : decision === "flag" ? "flagged"
+            : decision === "reject" ? "rejected"
+            : "escalated";
+        const assistantMessage = `decision: ${decision} (confidence: ${Math.round(confidence * 100)}%)\n\n[offline mode] based on the available information, this transaction should be ${decisionVerb}. further review recommended when backend is available.\n\nevidence: [local analysis]`;
 
         const updatedDilemma = {
           ...dilemma,
@@ -120,7 +125,6 @@ export function useDilemmaSubmit() {
             ...newMessages,
             { role: "assistant" as const, content: assistantMessage },
           ],
-          completed: true,
         };
         setDilemma(updatedDilemma);
 
@@ -142,17 +146,13 @@ export function useDilemmaSubmit() {
           );
         });
 
-        updatePet({
-          moralStats: newStats,
-          dilemmas: [...pet.dilemmas, updatedDilemma],
-        });
-
+        updatePet({ moralStats: newStats });
+        setLastAnswerDecision(decision);
         incrementStat(BaseStatKeys.sanity);
         showOutcome(
           "success",
           `[offline] ${decision} (${Math.round(confidence * 100)}%)`
         );
-        setDilemma(null);
       } finally {
         setIsSubmitting(false);
       }

@@ -140,40 +140,27 @@ be-install-dev:
 	  echo "[skip] backend/requirements.txt not found"; \
 	fi
 
-# be-format:
-# 	$(call warn_if_no_venv)
-# 	$(PYTHON) -m ruff format backend/
-
-# be-lint:
-# 	$(call warn_if_no_venv)
-# 	$(PYTHON) -m ruff check backend/
-
-# be-typecheck:
-# 	$(call warn_if_no_venv)
-# 	$(PYTHON) -m mypy backend/ --ignore-missing-imports
-
-# be-test:
-# 	$(call warn_if_no_venv)
-# 	$(PYTHON) -m pytest backend/
-
-# be-check: be-lint be-typecheck be-test
-# 	@echo "[ok] Backend checks passed."
-
-# Aliases for when backend eng uncomments the above:
 be-format:
-	@echo "[skip] Backend format — uncomment in Makefile when ready"
+	$(call warn_if_no_venv)
+	$(PYTHON) -m ruff format backend/
 
 be-lint:
-	@echo "[skip] Backend lint — uncomment in Makefile when ready"
+	$(call warn_if_no_venv)
+	$(PYTHON) -m ruff check backend/
 
 be-typecheck:
-	@echo "[skip] Backend typecheck — uncomment in Makefile when ready"
+	$(call warn_if_no_venv)
+	$(PYTHON) -m mypy backend/ --ignore-missing-imports
 
 be-test:
-	@echo "[skip] Backend test — uncomment in Makefile when ready"
+	$(call warn_if_no_venv)
+	$(PYTHON) -m pytest backend/tests
 
 be-check:
-	@echo "[skip] Backend check — uncomment in Makefile when ready"
+	@$(MAKE) be-lint
+	@$(MAKE) be-typecheck
+	@$(MAKE) be-test
+	@echo "[ok] Backend checks passed."
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Combined

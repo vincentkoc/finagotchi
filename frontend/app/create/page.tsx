@@ -42,6 +42,7 @@ function Content() {
             alt="pan"
             width={180}
             height={180}
+            unoptimized
             className="transform translate-x-27 no-select object-cover"
           />
         </Background>
@@ -77,6 +78,7 @@ function Content() {
             alt="egg"
             width={180}
             height={180}
+            unoptimized
             className="no-select"
           />
         </Background>

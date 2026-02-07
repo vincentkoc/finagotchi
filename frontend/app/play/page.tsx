@@ -57,7 +57,7 @@ export default function Play() {
   const [healMinigameOpen, setHealMinigameOpen] = useState(false);
   const [feedMinigameOpen, setFeedMinigameOpen] = useState(false);
   const [playMinigameOpen, setPlayMinigameOpen] = useState(false);
-  const [graphVisible, setGraphVisible] = useState(true);
+  const [detailsVisible, setDetailsVisible] = useState(true);
   const { pet, evolution } = usePet();
   const { hoverText } = useHoverText();
   const hasGraduated = pet?.age !== undefined && pet.age >= 2;
@@ -88,7 +88,7 @@ export default function Play() {
         />
       )}
 
-      {/* Minigame modals — dithered overlay + centered box */}
+      {/* Minigame modals */}
       <DitheredOverlay
         isOpen={healMinigameOpen}
         onClose={() => setHealMinigameOpen(false)}
@@ -119,35 +119,30 @@ export default function Play() {
         />
       </DitheredOverlay>
 
-      {/* Top bar: Menu + toggle */}
-      <div className="flex justify-between items-center p-4 pb-0 w-full">
-        <Menu page="play" />
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setGraphVisible(!graphVisible)}
-            className="text-xs text-zinc-400 hover:text-zinc-700 border border-zinc-300 px-2 py-0.5 hover:bg-zinc-100 whitespace-nowrap hidden lg:block"
-          >
-            {graphVisible ? "hide details" : "show details"}
-          </button>
-          <button
-            onClick={() => setGraphVisible(!graphVisible)}
-            className="text-xs text-zinc-400 hover:text-zinc-700 border border-zinc-300 px-2 py-0.5 hover:bg-zinc-100 whitespace-nowrap lg:hidden"
-          >
-            {graphVisible ? "hide details" : "show details"}
-          </button>
+      <div className="flex flex-col gap-2 p-4 w-full">
+        {/* Dark header bar — full width */}
+        <div className="bg-zinc-900 border-2 border-black px-4 py-2">
+          <Menu
+            page="play"
+            variant="dark"
+            extra={
+              <motion.a
+                className="hover:text-white no-drag cursor-pointer underline"
+                onClick={() => setDetailsVisible(!detailsVisible)}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: 0.6 }}
+              >
+                {detailsVisible ? "hide extra" : "show extra"}
+              </motion.a>
+            }
+          />
         </div>
-      </div>
 
-      {/* Main layout — both columns start at the same level */}
-      <div className="flex flex-col lg:flex-row gap-4 px-4 pb-4 pt-2 w-full">
-        {/* LEFT COLUMN: Gameplay */}
-        <div
-          className={`flex flex-col gap-2 w-full ${graphVisible ? "lg:w-1/2 lg:max-w-2xl" : "lg:max-w-4xl lg:mx-auto"}`}
-        >
-          {/* Pet stats header */}
+        {/* Row 1: Stats header + Agent personality */}
+        <div className="flex flex-col lg:flex-row gap-2">
           <motion.div
-            key="stats"
-            className="w-full pointer-events-none"
+            className="w-full lg:w-1/2 pointer-events-none"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
@@ -159,10 +154,52 @@ export default function Play() {
             />
           </motion.div>
 
-          {/* Pet viewport */}
-          <Viewport />
+          <AnimatePresence>
+            {detailsVisible && (
+              <motion.div
+                key="personality"
+                className="w-full lg:w-1/2"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ duration: 0.2 }}
+              >
+                <Window title="agent personality">
+                  <MoralStats moralStats={pet.moralStats} />
+                </Window>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-          {/* Dialog / content area */}
+        {/* Row 2: Pet viewport + Memory graph */}
+        <div className="flex flex-col lg:flex-row gap-2">
+          <div className="w-full lg:w-1/2">
+            <Viewport />
+          </div>
+
+          <AnimatePresence>
+            {detailsVisible && (
+              <motion.div
+                key="graph"
+                className="w-full lg:w-1/2"
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 30 }}
+                transition={{ duration: 0.2, delay: 0.05 }}
+              >
+                <Window title="agent memory graph">
+                  <div className="min-h-[350px] lg:min-h-[400px]">
+                    <GraphPanel />
+                  </div>
+                </Window>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Row 3: Dialog / content — left side only */}
+        <div className="w-full lg:w-1/2">
           <AnimatePresence>
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -220,33 +257,6 @@ export default function Play() {
             </motion.div>
           </AnimatePresence>
         </div>
-
-        {/* RIGHT COLUMN: Details (collapsible) */}
-        {graphVisible && (
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: 20 }}
-            transition={{ duration: 0.2 }}
-            className="w-full lg:w-1/2 flex flex-col gap-2"
-          >
-            {/* Agent personality — bar style matching Header */}
-            <div className="flex flex-col gap-1">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">agent personality</h3>
-              <div className="border-2 border-black bg-white">
-                <MoralStats moralStats={pet.moralStats} />
-              </div>
-            </div>
-
-            {/* Agent memory graph */}
-            <div className="flex flex-col gap-1 flex-1 min-h-[350px] lg:min-h-[450px]">
-              <h3 className="text-xs font-bold text-zinc-500 uppercase tracking-wider px-1">agent memory graph</h3>
-              <div className="flex-1">
-                <GraphPanel />
-              </div>
-            </div>
-          </motion.div>
-        )}
       </div>
     </>
   );

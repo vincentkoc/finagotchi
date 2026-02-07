@@ -253,7 +253,7 @@ export default function GraphPanel() {
       className="flex flex-col gap-2 w-full h-full"
     >
       {/* Graph container */}
-      <div className="border-2 border-black bg-zinc-100 relative" style={{ height: "400px" }}>
+      <div className="bg-zinc-100 relative" style={{ height: "400px" }}>
         <div ref={containerRef} className="w-full" style={{ height: "100%" }} />
         {tooltip && (
           <div

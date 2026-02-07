@@ -126,6 +126,7 @@ const Viewport = React.memo(function Viewport() {
                 className="visual"
                 alt="poo"
                 loading="lazy"
+                unoptimized
               />
             </div>
           );
@@ -156,6 +157,7 @@ const Viewport = React.memo(function Viewport() {
                     height={VIEWPORT_HEIGHT / 5}
                     className="absolute z-10 w-full h-full"
                     priority
+                    unoptimized
                   />
                 </motion.div>
               )}
@@ -174,6 +176,7 @@ const Viewport = React.memo(function Viewport() {
                   width={VIEWPORT_WIDTH / 5}
                   height={VIEWPORT_HEIGHT / 5}
                   priority
+                  unoptimized={petSprite.endsWith(".gif")}
                   className="translate-y-[30%] cursor-grab no-select"
                 />
               )}

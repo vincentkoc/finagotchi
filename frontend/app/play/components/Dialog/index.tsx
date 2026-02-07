@@ -13,6 +13,13 @@ export default function Dialog() {
     useDilemmaSubmit();
   const hasAutoTriggered = useRef(false);
 
+  // Reset auto-trigger when a dilemma completes (becomes null)
+  useEffect(() => {
+    if (!dilemma) {
+      hasAutoTriggered.current = false;
+    }
+  }, [dilemma]);
+
   // Auto-trigger a scenario when there's none active
   useEffect(() => {
     if (!pet || dilemma || hasAutoTriggered.current) return;
