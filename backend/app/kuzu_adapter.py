@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any
 
 try:
@@ -17,6 +18,8 @@ class KuzuAdapter:
         if kuzu is None:
             return
         try:
+            if not settings.kuzu_db_path or not os.path.isdir(settings.kuzu_db_path):
+                return
             db = kuzu.Database(settings.kuzu_db_path, read_only=True)
             self._conn = kuzu.Connection(db)
             self._enabled = True

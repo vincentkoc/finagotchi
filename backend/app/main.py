@@ -11,6 +11,7 @@ from .kuzu_adapter import KuzuAdapter
 from .pet_store import PetStore
 from .qdrant_client import make_client, search, to_evidence, extract_anchors
 from .dilemma_bank import DilemmaBank
+from .graph_fallback import build_graph_from_evidence
 from .schemas import (
     QARequest,
     QAResponse,
@@ -107,6 +108,8 @@ def qa(req: QARequest) -> QAResponse:
 
     overlay_graph = pet_store.get_overlay_graph(req.pet_id)
     neighborhood = kuzu.neighborhood(anchors, depth=2)
+    if not neighborhood.get("nodes"):
+        neighborhood = build_graph_from_evidence(evidence, anchors)
 
     return QAResponse(
         answer_json=answer_json,
