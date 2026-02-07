@@ -24,6 +24,8 @@ endef
 
 .PHONY: help setup-venv install install-dev format lint test precommit api kill-port api-restart
 
+PORT ?= 8000
+
 help:
 	@echo "Available targets:"
 	@echo "  help          Show this help message (default)"
@@ -62,11 +64,11 @@ test:
 	$(PYTHON) -m pytest
 
 kill-port:
-	PORT=$(PORT) scripts/kill_port.sh $${PORT:-8000}
+	PORT=$(PORT) scripts/kill_port.sh $(PORT)
 
 api:
-	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $${PORT:-8000} --reload --reload-dir $(CURDIR)
+	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $(PORT) --reload --reload-dir $(CURDIR)
 
 api-restart:
-	PORT=$(PORT) scripts/kill_port.sh $${PORT:-8000}
-	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $${PORT:-8000} --reload --reload-dir $(CURDIR)
+	PORT=$(PORT) scripts/kill_port.sh $(PORT)
+	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $(PORT) --reload --reload-dir $(CURDIR)
