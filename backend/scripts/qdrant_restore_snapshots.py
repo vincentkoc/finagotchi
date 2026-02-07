@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv('.env')
 load_dotenv('backend/.env')
 
-qdrant_url = os.environ.get("QDRANT_URL") or os.environ.get("QDRANT_CLUSTER_ENDPOINT")
+qdrant_url = os.environ.get("QDRANT_CLUSTER_ENDPOINT")
 qdrant_api_key = os.environ.get("QDRANT_API_KEY")
 
 if not qdrant_url or not qdrant_api_key:

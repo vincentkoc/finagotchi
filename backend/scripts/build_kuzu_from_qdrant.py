@@ -10,8 +10,8 @@ load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env"
 load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")))
 
 QDRANT_URL = os.environ.get(
-    "QDRANT_URL",
-    os.environ.get("QDRANT_CLUSTER_ENDPOINT", "http://localhost:6333"),
+    "QDRANT_CLUSTER_ENDPOINT",
+    "http://localhost:6333",
 )
 QDRANT_API_KEY = os.environ.get("QDRANT_API_KEY")
 ENTITY_COLLECTION = os.environ.get("ENTITY_COLLECTION", "Entity_name")

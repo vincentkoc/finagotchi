@@ -22,7 +22,7 @@ endef
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup-venv install install-dev format lint test precommit api api-noreload kill-port api-restart
+.PHONY: help setup-venv install install-dev format lint test precommit api api-noreload kill-port api-restart qdrant-download qdrant-restore qdrant-setup
 
 PORT ?= 8000
 
@@ -39,6 +39,9 @@ help:
 	@echo "  api-noreload  Run backend API without reload (avoids reloader zombies)"
 	@echo "  kill-port     Stop process on PORT (default 8000)"
 	@echo "  api-restart   Kill port and restart API"
+	@echo "  qdrant-download  Download Qdrant snapshots"
+	@echo "  qdrant-restore   Restore Qdrant snapshots to cloud"
+	@echo "  qdrant-setup     Download + restore snapshots"
 
 setup-venv:
 	python3 -m venv $(VENV)
@@ -76,3 +79,11 @@ api-noreload:
 api-restart:
 	PORT=$(PORT) scripts/kill_port.sh $(PORT)
 	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $(PORT) --reload --reload-dir $(CURDIR)
+
+qdrant-download:
+	$(PYTHON) backend/scripts/qdrant_download_snapshots.py
+
+qdrant-restore:
+	$(PYTHON) backend/scripts/qdrant_restore_snapshots.py
+
+qdrant-setup: qdrant-download qdrant-restore
