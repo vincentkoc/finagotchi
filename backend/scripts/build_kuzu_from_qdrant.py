@@ -41,8 +41,12 @@ print("Building Kuzu DB at:", OUTPUT_DIR)
 
 conn = kuzu.Connection(kuzu.Database(OUTPUT_DIR))
 
-conn.execute("CREATE NODE TABLE IF NOT EXISTS Entity(entity_id STRING, name STRING, type STRING, PRIMARY KEY(entity_id))")
-conn.execute("CREATE NODE TABLE IF NOT EXISTS Chunk(chunk_id STRING, text STRING, PRIMARY KEY(chunk_id))")
+conn.execute(
+    "CREATE NODE TABLE IF NOT EXISTS Entity(entity_id STRING, name STRING, type STRING, PRIMARY KEY(entity_id))"
+)
+conn.execute(
+    "CREATE NODE TABLE IF NOT EXISTS Chunk(chunk_id STRING, text STRING, PRIMARY KEY(chunk_id))"
+)
 conn.execute("CREATE REL TABLE IF NOT EXISTS Mentions(FROM Chunk TO Entity, rel STRING)")
 
 entity_ids = set()
@@ -81,7 +85,7 @@ while True:
         etype = _extract_type(payload) or ""
         if eid not in entity_ids:
             conn.execute(
-                "INSERT INTO Entity VALUES ($id, $name, $type)",
+                "MERGE (e:Entity {entity_id: $id}) SET e.name = $name, e.type = $type",
                 {"id": eid, "name": name, "type": etype},
             )
             entity_ids.add(eid)
@@ -114,7 +118,7 @@ while True:
         if text is None:
             text = ""
         conn.execute(
-            "INSERT INTO Chunk VALUES ($id, $text)",
+            "MERGE (c:Chunk {chunk_id: $id}) SET c.text = $text",
             {"id": cid, "text": text[:2000]},
         )
 
@@ -143,7 +147,8 @@ while True:
 
             if target_id:
                 conn.execute(
-                    "INSERT INTO Mentions VALUES ($cid, $eid, $rel)",
+                    "MATCH (c:Chunk {chunk_id: $cid}), (e:Entity {entity_id: $eid}) "
+                    "MERGE (c)-[:Mentions {rel: $rel}]->(e)",
                     {"cid": cid, "eid": target_id, "rel": "MENTIONS"},
                 )
 

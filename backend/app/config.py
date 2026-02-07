@@ -17,7 +17,10 @@ load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", 
 
 @dataclass(frozen=True)
 class Settings:
-    qdrant_url: str = _env("QDRANT_URL", "http://localhost:6333")
+    qdrant_url: str = _env(
+        "QDRANT_CLUSTER_ENDPOINT",
+        "http://localhost:6333",
+    )
     qdrant_api_key: str | None = _env("QDRANT_API_KEY")
     qdrant_collection: str = _env("QDRANT_COLLECTION", "DocumentChunk_text")
     qdrant_top_k: int = int(_env("QDRANT_TOP_K", "5"))
@@ -34,11 +37,8 @@ class Settings:
                 os.path.dirname(__file__),
                 "..",
                 "..",
-                "external",
-                "grey",
-                "cognee_export",
-                "system_databases",
-                "cognee_graph_kuzu",
+                "data",
+                "kuzu",
             )
         ),
     )
