@@ -172,6 +172,8 @@ class PetStore:
                 src = edge.get("src")
                 rel = edge.get("rel")
                 dst = edge.get("dst")
+                if not src or not rel or not dst:
+                    continue
                 weight = float(edge.get("weight", 1.0))
                 meta = edge.get("meta", {})
                 conn.execute(

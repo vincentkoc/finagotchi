@@ -24,6 +24,7 @@ class Settings:
     qdrant_api_key: str | None = _env("QDRANT_API_KEY")
     qdrant_collection: str = _env("QDRANT_COLLECTION", "DocumentChunk_text")
     qdrant_top_k: int = int(_env("QDRANT_TOP_K", "5"))
+    qdrant_vector_name: str | None = _env("QDRANT_VECTOR_NAME")
 
     llm_chat_url: str = _env("LLM_CHAT_URL", "http://localhost:8080/v1")
     llm_chat_model: str = _env("LLM_CHAT_MODEL", "distil-labs-slm")

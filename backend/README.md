@@ -14,12 +14,31 @@ pip install -r backend/requirements.txt
 uvicorn backend.app.main:app --reload --port 8000
 ```
 
-## Model servers
-This backend expects OpenAI-compatible endpoints:
-- `LLM_CHAT_URL` → llama.cpp server for chat
-- `LLM_EMBED_URL` → llama.cpp server for embeddings
+## Model serving (single port)
+The backend can run GGUF models **in-process** (no extra ports). Set:
+```
+INPROC_LLM=1
+LLM_CHAT_MODEL_PATH=external/grey/models/cognee-distillabs-model-gguf-quantized/model-quantized.gguf
+LLM_EMBED_MODEL_PATH=external/grey/models/nomic-embed-text/nomic-embed-text-v1.5.f16.gguf
+```
 
-Use your existing GGUF runner setup (from airgapped-offfline-rag) and set env vars accordingly.
+Then run:
+```bash
+make api-noreload
+```
+
+### Optional: external servers + proxy
+If you prefer separate llama.cpp servers, keep:
+- `LLM_CHAT_URL` → chat server
+- `LLM_EMBED_URL` → embed server
+
+The backend exposes proxy routes:
+- `POST /llm/chat`
+- `POST /llm/embeddings`
+
+Frontend can still talk to the backend only.
+
+For macOS OpenBLAS build details, see: `docs/LLAMA_CPP_SETUP.md`
 
 ## Qdrant snapshots (cloud)
 ```bash

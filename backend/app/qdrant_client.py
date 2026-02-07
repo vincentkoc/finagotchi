@@ -15,9 +15,14 @@ def make_client() -> QdrantClient:
 
 
 def search(client: QdrantClient, vector: list[float]) -> list[qdrant_models.ScoredPoint]:
+    query_vector = vector
+    if settings.qdrant_vector_name:
+        query_vector = qdrant_models.NamedVector(
+            name=settings.qdrant_vector_name, vector=vector
+        )
     return client.search(
         collection_name=settings.qdrant_collection,
-        query_vector=vector,
+        query_vector=query_vector,
         limit=settings.qdrant_top_k,
         with_payload=True,
         with_vectors=False,

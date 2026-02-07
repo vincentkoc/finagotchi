@@ -1,0 +1,84 @@
+repos:
+  # ────────────────────────────────────────────────────────────────────────────
+  # General hooks (all files)
+  # ────────────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+        exclude: 'tsconfig\.json$'  # tsconfig allows comments
+      - id: check-toml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: detect-private-key
+      - id: check-merge-conflict
+      - id: check-case-conflict
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Python — backend (commented out, enable when backend eng is ready)
+  # ────────────────────────────────────────────────────────────────────────────
+  # - repo: https://github.com/asottile/pyupgrade
+  #   rev: v3.21.2
+  #   hooks:
+  #     - id: pyupgrade
+  #       args: [--py311-plus]
+  #       files: ^backend/
+
+  # - repo: https://github.com/astral-sh/ruff-pre-commit
+  #   rev: v0.14.14
+  #   hooks:
+  #     - id: ruff
+  #       args: [--fix, --show-fixes]
+  #       files: ^backend/
+  #     - id: ruff-format
+  #       files: ^backend/
+
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v1.19.1
+  #   hooks:
+  #     - id: mypy
+  #       files: ^backend/
+  #       args: [--ignore-missing-imports]
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Frontend — TypeScript / Next.js
+  # ────────────────────────────────────────────────────────────────────────────
+  - repo: local
+    hooks:
+      - id: fe-lint
+        name: frontend eslint
+        entry: bash -c 'cd frontend && npx next lint --quiet'
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js|jsx)$
+        pass_filenames: false
+
+      - id: fe-typecheck
+        name: frontend typecheck
+        entry: bash -c 'cd frontend && npx tsc --noEmit'
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$
+        pass_filenames: false
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Markdown
+  # ────────────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/igorshubovych/markdownlint-cli
+    rev: v0.44.0
+    hooks:
+      - id: markdownlint
+        files: \.md$
+        exclude: '(external/|node_modules/|frontend/node_modules/)'
+        args: ['--disable=MD013', '--disable=MD033', '--disable=MD041']
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Spelling
+  # ────────────────────────────────────────────────────────────────────────────
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.1
+    hooks:
+      - id: codespell
+        exclude: '(\.json$)|(node_modules/)|(external/)|(\.snapshot$)|(\.gguf$)|(package-lock\.json$)'
+        args: ['--skip=*.json,package-lock.json,node_modules,external,.next']

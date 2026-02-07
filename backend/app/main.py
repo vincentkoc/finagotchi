@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import time
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
+import httpx
+import json
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
@@ -52,6 +54,54 @@ def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "time": str(time.time())}
+
+
+@app.get("/health/models")
+def health_models() -> dict[str, object]:
+    status = {"chat": False, "embed": False}
+    try:
+        llm.chat([{"role": "system", "content": "Reply with OK."}])
+        status["chat"] = True
+    except Exception:
+        status["chat"] = False
+    try:
+        llm.embed("ping")
+        status["embed"] = True
+    except Exception:
+        status["embed"] = False
+    return status
+
+
+@app.post("/llm/chat")
+def llm_chat_proxy(payload: dict, request: Request) -> Response:
+    # Proxy raw OpenAI-compatible payload to chat server (or in-proc if enabled)
+    if llm.inproc is not None:
+        result = llm.inproc.chat(payload.get("messages", []))
+        return Response(content=json.dumps(result).encode("utf-8"), status_code=200, media_type="application/json")
+    url = f"{settings.llm_chat_url.rstrip('/')}/chat/completions"
+    headers = {"Content-Type": "application/json"}
+    resp = httpx.post(url, json=payload, headers=headers, timeout=120.0)
+    return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "application/json"))
+
+
+@app.post("/llm/embeddings")
+def llm_embed_proxy(payload: dict, request: Request) -> Response:
+    if llm.inproc is not None:
+        inp = payload.get("input", "")
+        if isinstance(inp, list):
+            data = []
+            for idx, text in enumerate(inp):
+                vector = llm.inproc.embed(text)
+                data.append({"embedding": vector, "index": idx, "object": "embedding"})
+            result = {"data": data, "model": "inproc"}
+        else:
+            vector = llm.inproc.embed(inp)
+            result = {"data": [{"embedding": vector, "index": 0, "object": "embedding"}], "model": "inproc"}
+        return Response(content=json.dumps(result).encode("utf-8"), status_code=200, media_type="application/json")
+    url = f"{settings.llm_embed_url.rstrip('/')}/embeddings"
+    headers = {"Content-Type": "application/json"}
+    resp = httpx.post(url, json=payload, headers=headers, timeout=120.0)
+    return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "application/json"))
 
 
 @app.get("/dilemma/next", response_model=DilemmaResponse)
