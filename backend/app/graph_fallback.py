@@ -46,7 +46,9 @@ def build_graph_from_evidence(
                 node_id,
                 {
                     "id": node_id,
-                    "label": f"{key} {value}" if key in ("vendor_id", "transaction_id") else value,
+                    "label": f"{key} {value}"
+                    if key in ("vendor_id", "transaction_id")
+                    else value,
                     "group": key,
                     "meta": {"type": key},
                 },

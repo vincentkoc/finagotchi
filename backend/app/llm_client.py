@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import os
 from typing import Any
 
@@ -36,7 +37,9 @@ class LLMClient:
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         if self.inproc is not None:
-            result = self.inproc.chat(messages, max_tokens=self.max_tokens, temperature=self.temperature)
+            result = self.inproc.chat(
+                messages, max_tokens=self.max_tokens, temperature=self.temperature
+            )
             return result["choices"][0]["message"]["content"]
         url = f"{self.chat_base}/chat/completions"
         payload = {
@@ -56,6 +59,11 @@ class LLMClient:
         try:
             return json.loads(content)
         except json.JSONDecodeError:
+            # try to extract a JSON object from the response
+            extracted = _extract_json(content)
+            if extracted is not None:
+                return extracted
+
             # second-pass JSONify
             fix_messages = messages + [
                 {
@@ -65,4 +73,44 @@ class LLMClient:
                 {"role": "user", "content": content},
             ]
             fixed = self.chat(fix_messages)
-            return json.loads(fixed)
+            try:
+                return json.loads(fixed)
+            except json.JSONDecodeError:
+                extracted = _extract_json(fixed)
+                if extracted is not None:
+                    return extracted
+                # final fallback
+                return {
+                    "decision": "flag",
+                    "confidence": 0.3,
+                    "rationale": "Model returned invalid JSON; defaulting to flag.",
+                    "evidence_ids": [],
+                    "overlay_edges": [],
+                }
+
+
+def _extract_json(text: str) -> dict[str, Any] | None:
+    # Try to find the first JSON object in the text
+    if not text:
+        return None
+    # Quick brace extraction
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+    candidate = text[start : end + 1]
+    # Remove trailing code fences if present
+    candidate = re.sub(r"^```json\\s*|```$", "", candidate, flags=re.IGNORECASE).strip()
+    try:
+        return json.loads(candidate)
+    except json.JSONDecodeError:
+        # Try to recover from single-quoted dicts
+        try:
+            import ast
+
+            parsed = ast.literal_eval(candidate)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            return None
+    return None

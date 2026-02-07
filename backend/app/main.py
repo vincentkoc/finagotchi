@@ -1,35 +1,40 @@
 from __future__ import annotations
 
-import time
-from fastapi import FastAPI, Request, Response, Body
-import logging
-import httpx
 import json
+import logging
+import time
+from typing import Annotated, cast
+
+import httpx
+from fastapi import Body, FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
-from .logging_setup import setup_logging
-from .llm_client import LLMClient
-from .kuzu_adapter import KuzuAdapter
-from .pet_store import PetStore
-from .qdrant_client import make_client, search, to_evidence, extract_anchors
 from .dilemma_bank import DilemmaBank
-from .graph_fallback import build_graph_from_evidence
-from .schemas import (
-    QARequest,
-    QAResponse,
-    FeedbackRequest,
-    FeedbackResponse,
-    PetResponse,
-    DilemmaResponse,
-    GraphBundle,
-    AnswerJSON,
-)
 from .docstrings import (
-    QA_EXAMPLE_REQUEST,
-    QA_EXAMPLE_RESPONSE,
     FEEDBACK_EXAMPLE_REQUEST,
     FEEDBACK_EXAMPLE_RESPONSE,
+    QA_EXAMPLE_REQUEST,
+    QA_EXAMPLE_RESPONSE,
+)
+from .graph_fallback import build_graph_from_evidence
+from .kuzu_adapter import KuzuAdapter
+from .llm_client import LLMClient
+from .logging_setup import setup_logging
+from .pet_store import PetStore
+from .qdrant_client import extract_anchors, make_client, search, to_evidence
+from .schemas import (
+    AnswerJSON,
+    DilemmaResponse,
+    EvidenceItem,
+    FeedbackRequest,
+    FeedbackResponse,
+    GraphBundle,
+    GraphEdge,
+    GraphNode,
+    PetResponse,
+    QARequest,
+    QAResponse,
 )
 
 setup_logging()
@@ -59,6 +64,7 @@ kuzu = KuzuAdapter()
 pet_store = PetStore()
 bank = DilemmaBank()
 
+
 def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]:
     nodes: dict[str, dict[str, object]] = {}
     for edge in edges:
@@ -80,13 +86,19 @@ async def log_requests(request: Request, call_next):
     response = await call_next(request)
     duration_ms = int((time.time() - start) * 1000)
     if request.url.path in {"/qa", "/feedback"}:
-        logger.info("%s %s %s %sms", request.method, request.url.path, response.status_code, duration_ms)
+        logger.info(
+            "%s %s %s %sms",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
     return response
 
 
 @app.get("/health/models")
 def health_models() -> dict[str, object]:
-    status = {"chat": False, "embed": False}
+    status: dict[str, object] = {"chat": False, "embed": False}
     try:
         llm.chat([{"role": "system", "content": "Reply with OK."}])
         status["chat"] = True
@@ -105,11 +117,19 @@ def llm_chat_proxy(payload: dict, request: Request) -> Response:
     # Proxy raw OpenAI-compatible payload to chat server (or in-proc if enabled)
     if llm.inproc is not None:
         result = llm.inproc.chat(payload.get("messages", []))
-        return Response(content=json.dumps(result).encode("utf-8"), status_code=200, media_type="application/json")
+        return Response(
+            content=json.dumps(result).encode("utf-8"),
+            status_code=200,
+            media_type="application/json",
+        )
     url = f"{settings.llm_chat_url.rstrip('/')}/chat/completions"
     headers = {"Content-Type": "application/json"}
     resp = httpx.post(url, json=payload, headers=headers, timeout=120.0)
-    return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "application/json"))
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        media_type=resp.headers.get("content-type", "application/json"),
+    )
 
 
 @app.post("/llm/embeddings", summary="Proxy embeddings", tags=["LLM"])
@@ -124,12 +144,23 @@ def llm_embed_proxy(payload: dict, request: Request) -> Response:
             result = {"data": data, "model": "inproc"}
         else:
             vector = llm.inproc.embed(inp)
-            result = {"data": [{"embedding": vector, "index": 0, "object": "embedding"}], "model": "inproc"}
-        return Response(content=json.dumps(result).encode("utf-8"), status_code=200, media_type="application/json")
+            result = {
+                "data": [{"embedding": vector, "index": 0, "object": "embedding"}],
+                "model": "inproc",
+            }
+        return Response(
+            content=json.dumps(result).encode("utf-8"),
+            status_code=200,
+            media_type="application/json",
+        )
     url = f"{settings.llm_embed_url.rstrip('/')}/embeddings"
     headers = {"Content-Type": "application/json"}
     resp = httpx.post(url, json=payload, headers=headers, timeout=120.0)
-    return Response(content=resp.content, status_code=resp.status_code, media_type=resp.headers.get("content-type", "application/json"))
+    return Response(
+        content=resp.content,
+        status_code=resp.status_code,
+        media_type=resp.headers.get("content-type", "application/json"),
+    )
 
 
 @app.get(
@@ -148,9 +179,11 @@ def next_dilemma() -> DilemmaResponse:
     response_model=QAResponse,
     summary="Answer a question with evidence",
     tags=["Core"],
-    responses={200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}},
+    responses={
+        200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}
+    },
 )
-def qa(req: QARequest = Body(..., example=QA_EXAMPLE_REQUEST)) -> QAResponse:
+def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QAResponse:
     pet = pet_store.get_pet(req.pet_id)
 
     query_vec = llm.embed(req.question)
@@ -205,9 +238,19 @@ def qa(req: QARequest = Body(..., example=QA_EXAMPLE_REQUEST)) -> QAResponse:
         }
 
     # Normalize answer
+    def _coerce_confidence(value: object) -> float:
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            try:
+                return float(value)
+            except ValueError:
+                return 0.5
+        return 0.5
+
     answer_json = AnswerJSON(
         decision=answer.get("decision", "flag"),
-        confidence=float(answer.get("confidence", 0.5)),
+        confidence=_coerce_confidence(answer.get("confidence", 0.5)),
         rationale=answer.get("rationale", ""),
         evidence_ids=[e["id"] for e in evidence],
         overlay_edges=answer.get("overlay_edges", []),
@@ -226,30 +269,30 @@ def qa(req: QARequest = Body(..., example=QA_EXAMPLE_REQUEST)) -> QAResponse:
         neighborhood = build_graph_from_evidence(evidence, anchors)
 
     def _normalize_graph(bundle: dict) -> GraphBundle:
-        nodes = []
+        nodes: list[GraphNode] = []
         for n in bundle.get("nodes", []):
             nodes.append(
-                {
-                    "id": n.get("id"),
-                    "label": n.get("label"),
-                    "type": n.get("type") or n.get("group"),
-                    "group": n.get("group"),
-                    "meta": n.get("meta", {}),
-                    "properties": n.get("properties") or n.get("meta", {}),
-                }
+                GraphNode(
+                    id=n.get("id"),
+                    label=n.get("label"),
+                    type=n.get("type") or n.get("group"),
+                    group=n.get("group"),
+                    meta=n.get("meta", {}),
+                    properties=n.get("properties") or n.get("meta", {}),
+                )
             )
-        edges = []
+        edges: list[GraphEdge] = []
         for e in bundle.get("edges", []):
             edges.append(
-                {
-                    "id": e.get("id"),
-                    "source": e.get("source"),
-                    "target": e.get("target"),
-                    "label": e.get("label"),
-                    "weight": e.get("weight"),
-                    "meta": e.get("meta", {}),
-                    "isOverlay": e.get("isOverlay"),
-                }
+                GraphEdge(
+                    id=e.get("id"),
+                    source=e.get("source"),
+                    target=e.get("target"),
+                    label=e.get("label"),
+                    weight=e.get("weight"),
+                    meta=e.get("meta", {}),
+                    isOverlay=e.get("isOverlay"),
+                )
             )
         return GraphBundle(nodes=nodes, edges=edges)
 
@@ -261,7 +304,7 @@ def qa(req: QARequest = Body(..., example=QA_EXAMPLE_REQUEST)) -> QAResponse:
 
     return QAResponse(
         answer_json=answer_json,
-        evidence_bundle=evidence,
+        evidence_bundle=[EvidenceItem(**e) for e in evidence],
         neighborhood_graph=_normalize_graph(neighborhood),
         overlay_graph=_normalize_graph(overlay_graph),
         graph_combined=_normalize_graph(combined),
@@ -275,9 +318,13 @@ def qa(req: QARequest = Body(..., example=QA_EXAMPLE_REQUEST)) -> QAResponse:
     response_model=FeedbackResponse,
     summary="Apply user feedback to pet state",
     tags=["Core"],
-    responses={200: {"content": {"application/json": {"example": FEEDBACK_EXAMPLE_RESPONSE}}}},
+    responses={
+        200: {"content": {"application/json": {"example": FEEDBACK_EXAMPLE_RESPONSE}}}
+    },
 )
-def feedback(req: FeedbackRequest = Body(..., example=FEEDBACK_EXAMPLE_REQUEST)) -> FeedbackResponse:
+def feedback(
+    req: Annotated[FeedbackRequest, Body(example=FEEDBACK_EXAMPLE_REQUEST)],
+) -> FeedbackResponse:
     pet_id = pet_store.get_interaction_pet(req.interaction_id) or "default"
     pet_stats = pet_store.update_stats(pet_id, req.action)
     new_path = pet_store.maybe_evolve(pet_id)
@@ -300,8 +347,33 @@ def feedback(req: FeedbackRequest = Body(..., example=FEEDBACK_EXAMPLE_REQUEST))
         pet_stats=pet_stats,
         updated_pet_stats=pet_stats,
         overlay_graph_delta=GraphBundle(
-            nodes=_nodes_from_edges(overlay_delta),
-            edges=overlay_delta,
+            nodes=[
+                GraphNode(
+                    id=str(n.get("id")),
+                    label=str(n.get("label")) if n.get("label") is not None else None,
+                    group=str(n.get("group")) if n.get("group") is not None else None,
+                    type=str(n.get("type")) if n.get("type") is not None else None,
+                    meta=cast(dict, n.get("meta"))
+                    if isinstance(n.get("meta"), dict)
+                    else {},
+                    properties=cast(dict, n.get("properties"))
+                    if isinstance(n.get("properties"), dict)
+                    else None,
+                )
+                for n in _nodes_from_edges(overlay_delta)
+            ],
+            edges=[
+                GraphEdge(
+                    id=e.get("id"),
+                    source=str(e.get("source")),
+                    target=str(e.get("target")),
+                    label=e.get("label"),
+                    weight=e.get("weight"),
+                    meta=e.get("meta", {}),
+                    isOverlay=e.get("isOverlay"),
+                )
+                for e in overlay_delta
+            ],
         ),
         new_path=new_path,
     )
@@ -336,6 +408,7 @@ def graph_neighborhood(entity_id: str, depth: int = 2) -> dict[str, object]:
 @app.get(
     "/graph/sample",
     summary="Debug sample graph nodes",
+    description="Returns a small graph sample for quick UI testing.",
     tags=["Graph"],
 )
 def graph_sample() -> dict[str, object]:

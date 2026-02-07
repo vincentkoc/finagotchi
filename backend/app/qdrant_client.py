@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from typing import Any
 import ast
+from typing import Any
 
 from qdrant_client import QdrantClient
 from qdrant_client.http import models as qdrant_models
@@ -15,8 +15,10 @@ def make_client() -> QdrantClient:
     return QdrantClient(url=settings.qdrant_url)
 
 
-def search(client: QdrantClient, vector: list[float]) -> list[qdrant_models.ScoredPoint]:
-    query_vector = vector
+def search(
+    client: QdrantClient, vector: list[float]
+) -> list[qdrant_models.ScoredPoint]:
+    query_vector: list[float] | qdrant_models.NamedVector = vector
     if settings.qdrant_vector_name:
         query_vector = qdrant_models.NamedVector(
             name=settings.qdrant_vector_name, vector=vector

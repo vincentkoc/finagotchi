@@ -12,24 +12,23 @@ def _env(name: str, default: str | None = None) -> str | None:
 
 # Load .env files (repo root or backend/.env)
 load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
-load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")))
+load_dotenv(
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env"))
+)
 
 
 @dataclass(frozen=True)
 class Settings:
-    qdrant_url: str = _env(
-        "QDRANT_CLUSTER_ENDPOINT",
-        "http://localhost:6333",
-    )
+    qdrant_url: str = _env("QDRANT_CLUSTER_ENDPOINT") or "http://localhost:6333"
     qdrant_api_key: str | None = _env("QDRANT_API_KEY")
-    qdrant_collection: str = _env("QDRANT_COLLECTION", "DocumentChunk_text")
-    qdrant_top_k: int = int(_env("QDRANT_TOP_K", "5"))
+    qdrant_collection: str = _env("QDRANT_COLLECTION") or "DocumentChunk_text"
+    qdrant_top_k: int = int(_env("QDRANT_TOP_K") or "5")
     qdrant_vector_name: str | None = _env("QDRANT_VECTOR_NAME")
 
-    llm_chat_url: str = _env("LLM_CHAT_URL", "http://localhost:8080/v1")
-    llm_chat_model: str = _env("LLM_CHAT_MODEL", "distil-labs-slm")
-    llm_embed_url: str = _env("LLM_EMBED_URL", "http://localhost:8081/v1")
-    llm_embed_model: str = _env("LLM_EMBED_MODEL", "nomic-embed-text")
+    llm_chat_url: str = _env("LLM_CHAT_URL") or "http://localhost:8080/v1"
+    llm_chat_model: str = _env("LLM_CHAT_MODEL") or "distil-labs-slm"
+    llm_embed_url: str = _env("LLM_EMBED_URL") or "http://localhost:8081/v1"
+    llm_embed_model: str = _env("LLM_EMBED_MODEL") or "nomic-embed-text"
 
     kuzu_db_path: str | None = _env(
         "KUZU_DB_PATH",
@@ -44,10 +43,10 @@ class Settings:
         ),
     )
 
-    sqlite_path: str = _env("SQLITE_PATH", os.path.abspath("./backend/pet_state.db"))
+    sqlite_path: str = _env("SQLITE_PATH") or os.path.abspath("./backend/pet_state.db")
 
     cors_origins: list[str] = field(
-        default_factory=lambda: _env("CORS_ORIGINS", "http://localhost:3000").split(
+        default_factory=lambda: (_env("CORS_ORIGINS") or "http://localhost:3000").split(
             ","
         )
     )

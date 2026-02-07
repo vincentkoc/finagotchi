@@ -4,9 +4,9 @@ import os
 from typing import Any
 
 try:
-    import kuzu
+    import kuzu as kuzu  # type: ignore
 except Exception:  # pragma: no cover
-    kuzu = None
+    kuzu = None  # type: ignore
 
 from .config import settings
 
@@ -30,7 +30,9 @@ class KuzuAdapter:
     def enabled(self) -> bool:
         return self._enabled
 
-    def neighborhood(self, anchors: dict[str, set[str]], depth: int = 2) -> dict[str, Any]:
+    def neighborhood(
+        self, anchors: dict[str, set[str]], depth: int = 2
+    ) -> dict[str, Any]:
         if not self._enabled or self._conn is None:
             return {"nodes": [], "edges": []}
 
@@ -48,7 +50,7 @@ class KuzuAdapter:
                 # Use evidence parsed fields if present in anchors
                 # (anchors don't carry parsed, so we derive label later)
                 # Get chunk node
-                chunk_res = self._conn.execute(
+                chunk_res: Any = self._conn.execute(
                     "MATCH (c:Chunk {chunk_id: $cid}) RETURN c LIMIT 1",
                     {"cid": cid},
                 )
@@ -57,18 +59,26 @@ class KuzuAdapter:
                     label = cid
                     try:
                         text_val = getattr(chunk_node, "text", None)
-                        if isinstance(text_val, str) and text_val.startswith("{") and text_val.endswith("}"):
+                        if (
+                            isinstance(text_val, str)
+                            and text_val.startswith("{")
+                            and text_val.endswith("}")
+                        ):
                             import ast
 
                             parsed = ast.literal_eval(text_val)
                             if isinstance(parsed, dict):
-                                invoice = parsed.get("invoice_number") or parsed.get("transaction_id") or cid
+                                invoice = (
+                                    parsed.get("invoice_number")
+                                    or parsed.get("transaction_id")
+                                    or cid
+                                )
                                 total = parsed.get("total")
                                 due = parsed.get("due_date") or parsed.get("date")
                                 if total is not None:
-                                    label = f\"{invoice} | ${total}\"
+                                    label = f"{invoice} | ${total}"
                                 elif due is not None:
-                                    label = f\"{invoice} | due {due}\"
+                                    label = f"{invoice} | due {due}"
                                 else:
                                     label = str(invoice)
                     except Exception:
@@ -86,7 +96,7 @@ class KuzuAdapter:
                     )
 
                 # Expand to entities via Mentions
-                rel_res = self._conn.execute(
+                rel_res: Any = self._conn.execute(
                     "MATCH (c:Chunk {chunk_id: $cid})-[:Mentions]->(e:Entity) RETURN e, c LIMIT 50",
                     {"cid": cid},
                 )
@@ -122,7 +132,9 @@ class KuzuAdapter:
                 # Add vendor/transaction nodes from parsed chunk text if available
                 if parsed and isinstance(parsed, dict):
                     vendor_id = parsed.get("vendor_id")
-                    txn_id = parsed.get("transaction_id") or parsed.get("invoice_number")
+                    txn_id = parsed.get("transaction_id") or parsed.get(
+                        "invoice_number"
+                    )
                     if vendor_id is not None:
                         vid = f"vendor:{vendor_id}"
                         nodes.setdefault(
@@ -152,7 +164,7 @@ class KuzuAdapter:
                         if isinstance(parsed, dict):
                             total = parsed.get("total")
                             if total is not None:
-                                label = f\"{txn_id} | ${total}\"
+                                label = f"{txn_id} | ${total}"
                         nodes.setdefault(
                             tid,
                             {

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import os
-from typing import Any
+from typing import Any, cast
 
 try:
     from llama_cpp import Llama
 except Exception:  # pragma: no cover
-    Llama = None
+    Llama = None  # type: ignore
 
 
 class InprocLLM:
@@ -17,7 +17,9 @@ class InprocLLM:
         chat_model_path = os.environ.get("LLM_CHAT_MODEL_PATH")
         embed_model_path = os.environ.get("LLM_EMBED_MODEL_PATH")
         if not chat_model_path or not embed_model_path:
-            raise RuntimeError("LLM_CHAT_MODEL_PATH and LLM_EMBED_MODEL_PATH are required")
+            raise RuntimeError(
+                "LLM_CHAT_MODEL_PATH and LLM_EMBED_MODEL_PATH are required"
+            )
 
         n_threads = int(os.environ.get("LLM_CHAT_THREADS", "4"))
         n_ctx = int(os.environ.get("LLM_CHAT_CTX", "4096"))
@@ -41,14 +43,20 @@ class InprocLLM:
             embedding=True,
         )
 
-    def chat(self, messages: list[dict[str, str]], max_tokens: int = 256, temperature: float = 0.2) -> dict[str, Any]:
+    def chat(
+        self,
+        messages: list[dict[str, str]],
+        max_tokens: int = 256,
+        temperature: float = 0.2,
+    ) -> dict[str, Any]:
         result = self._chat.create_chat_completion(
-            messages=messages,
+            messages=cast(Any, messages),
             temperature=temperature,
             max_tokens=max_tokens,
         )
-        return result
+        return cast(dict[str, Any], result)
 
     def embed(self, text: str) -> list[float]:
         result = self._embed.create_embedding(text)
-        return result["data"][0]["embedding"]
+        embedding = result["data"][0]["embedding"]
+        return cast(list[float], embedding)
