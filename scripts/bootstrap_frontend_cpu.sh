@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REPO_URL="${REPO_URL:-}"
+REPO_URL="${REPO_URL:-https://github.com/vincentkoc/finagotchi}"
 API_URL="${API_URL:-}"
-
-if [ -z "$REPO_URL" ]; then
-  echo "REPO_URL is required. Example:"
-  echo "  REPO_URL=git@github.com:you/finagotchi.git ./scripts/bootstrap_frontend_cpu.sh"
-  exit 1
-fi
 
 if [ -z "$API_URL" ]; then
   echo "API_URL is required. Example:"

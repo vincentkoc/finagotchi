@@ -5,6 +5,8 @@ Two droplets:
 - **Backend** on GPU droplet (RTX 4000 ADA recommended)
 - **Frontend** on CPU droplet
 
+Repo: https://github.com/vincentkoc/finagotchi
+
 ## Backend GPU Droplet
 
 ### 1) Create Droplet
@@ -21,12 +23,12 @@ ssh root@<gpu_ip>
 ### 3) Install Docker
 ```bash
 apt-get update
-apt-get install -y docker.io docker-compose-plugin
+apt-get install -y docker.io docker-compose-plugin git rsync
 ```
 
 ### 4) Clone repo
 ```bash
-git clone <your_repo_url>
+git clone https://github.com/vincentkoc/finagotchi
 cd finagotchi
 ```
 
@@ -46,13 +48,21 @@ QDRANT_VECTOR_NAME=text
 INPROC_LLM=1
 LLM_CHAT_MODEL_PATH=/opt/finagotchi/models/cognee-distillabs-model-gguf-quantized/model-quantized.gguf
 LLM_EMBED_MODEL_PATH=/opt/finagotchi/models/nomic-embed-text/nomic-embed-text-v1.5.f16.gguf
+KUZU_DB_PATH=data/kuzu
 ```
 
 ### 7) Build + run backend
 ```bash
 docker build -f backend/Dockerfile -t finagotchi-backend .
 docker run -d --name finagotchi-backend -p 8000:8000 --env-file .env \
-  -v /opt/finagotchi/models:/opt/finagotchi/models finagotchi-backend
+  -v /opt/finagotchi/models:/opt/finagotchi/models \
+  -v /root/finagotchi/data:/app/data \
+  finagotchi-backend
+```
+
+### 8) Build Kuzu graph (once)
+```bash
+python backend/scripts/build_kuzu_from_qdrant.py
 ```
 
 Swagger:
@@ -73,12 +83,12 @@ ssh root@<frontend_ip>
 ### 3) Install Docker
 ```bash
 apt-get update
-apt-get install -y docker.io docker-compose-plugin
+apt-get install -y docker.io docker-compose-plugin git
 ```
 
 ### 4) Clone repo
 ```bash
-git clone <your_repo_url>
+git clone https://github.com/vincentkoc/finagotchi
 cd finagotchi
 ```
 
