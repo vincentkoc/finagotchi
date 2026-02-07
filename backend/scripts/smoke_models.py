@@ -1,4 +1,5 @@
 import os
+
 import httpx
 
 chat_url = os.environ.get("LLM_CHAT_URL", "http://localhost:8080/v1").rstrip("/")

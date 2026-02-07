@@ -1,4 +1,5 @@
 import os
+
 from qdrant_client import QdrantClient
 
 qdrant_url = os.environ.get("QDRANT_URL", "http://localhost:6333")
@@ -13,4 +14,10 @@ client = (
 
 info = client.get_collection(collection)
 print("collection:", collection)
-print("vector_size:", info.config.params.vectors.size)
+vectors = info.config.params.vectors
+size = None
+if isinstance(vectors, dict):
+    size = next(iter(vectors.values())).size
+else:
+    size = vectors.size if vectors else None
+print("vector_size:", size)

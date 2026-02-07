@@ -1,4 +1,5 @@
 import os
+import ast
 from typing import Any
 
 import kuzu
@@ -41,13 +42,28 @@ print("Building Kuzu DB at:", OUTPUT_DIR)
 
 conn = kuzu.Connection(kuzu.Database(OUTPUT_DIR))
 
+# Nodes
 conn.execute(
     "CREATE NODE TABLE IF NOT EXISTS Entity(entity_id STRING, name STRING, type STRING, PRIMARY KEY(entity_id))"
 )
 conn.execute(
     "CREATE NODE TABLE IF NOT EXISTS Chunk(chunk_id STRING, text STRING, PRIMARY KEY(chunk_id))"
 )
+conn.execute(
+    "CREATE NODE TABLE IF NOT EXISTS Vendor(vendor_id STRING, name STRING, PRIMARY KEY(vendor_id))"
+)
+conn.execute(
+    "CREATE NODE TABLE IF NOT EXISTS Invoice(invoice_id STRING, vendor_id STRING, total DOUBLE, date STRING, due_date STRING, PRIMARY KEY(invoice_id))"
+)
+conn.execute(
+    "CREATE NODE TABLE IF NOT EXISTS SKU(sku STRING, product STRING, PRIMARY KEY(sku))"
+)
+
+# Relationships
 conn.execute("CREATE REL TABLE IF NOT EXISTS Mentions(FROM Chunk TO Entity, rel STRING)")
+conn.execute("CREATE REL TABLE IF NOT EXISTS Issued(FROM Vendor TO Invoice, rel STRING)")
+conn.execute("CREATE REL TABLE IF NOT EXISTS Contains(FROM Invoice TO SKU, rel STRING)")
+conn.execute("CREATE REL TABLE IF NOT EXISTS Supplies(FROM Vendor TO SKU, rel STRING)")
 
 entity_ids = set()
 entity_name_to_id = {}
@@ -122,14 +138,82 @@ while True:
             {"id": cid, "text": text[:2000]},
         )
 
-        # Try to link entities if present in payload
-        entities = []
+        # Parse structured chunk text
+        parsed = None
+        if isinstance(text, str) and text.startswith("{") and text.endswith("}"):
+            try:
+                parsed = ast.literal_eval(text)
+            except Exception:
+                parsed = None
+
+        # Create vendor/invoice/sku nodes + edges
+        if isinstance(parsed, dict):
+            vendor_id = parsed.get("vendor_id")
+            invoice_id = parsed.get("invoice_number") or parsed.get("transaction_id")
+            total = parsed.get("total")
+            date = parsed.get("date")
+            due = parsed.get("due_date")
+
+            if vendor_id is not None:
+                conn.execute(
+                    "MERGE (v:Vendor {vendor_id: $id}) SET v.name = $name",
+                    {"id": str(vendor_id), "name": f"Vendor {vendor_id}"},
+                )
+
+            if invoice_id is not None:
+                conn.execute(
+                    "MERGE (i:Invoice {invoice_id: $id}) SET i.vendor_id = $vendor, i.total = $total, i.date = $date, i.due_date = $due",
+                    {
+                        "id": str(invoice_id),
+                        "vendor": str(vendor_id) if vendor_id is not None else "",
+                        "total": float(total) if isinstance(total, (int, float)) else 0.0,
+                        "date": str(date) if date is not None else "",
+                        "due": str(due) if due is not None else "",
+                    },
+                )
+                if vendor_id is not None:
+                    conn.execute(
+                        "MATCH (v:Vendor {vendor_id: $vid}), (i:Invoice {invoice_id: $iid}) MERGE (v)-[:Issued {rel: $rel}]->(i)",
+                        {"vid": str(vendor_id), "iid": str(invoice_id), "rel": "ISSUED"},
+                    )
+
+            items = parsed.get("items")
+            if isinstance(items, str):
+                try:
+                    items = ast.literal_eval(items)
+                except Exception:
+                    items = None
+
+            if isinstance(items, list):
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    sku = item.get("sku")
+                    product = item.get("product")
+                    if sku:
+                        conn.execute(
+                            "MERGE (s:SKU {sku: $sku}) SET s.product = $product",
+                            {"sku": str(sku), "product": str(product) if product else ""},
+                        )
+                        if invoice_id is not None:
+                            conn.execute(
+                                "MATCH (i:Invoice {invoice_id: $iid}), (s:SKU {sku: $sku}) MERGE (i)-[:Contains {rel: $rel}]->(s)",
+                                {"iid": str(invoice_id), "sku": str(sku), "rel": "CONTAINS"},
+                            )
+                        if vendor_id is not None:
+                            conn.execute(
+                                "MATCH (v:Vendor {vendor_id: $vid}), (s:SKU {sku: $sku}) MERGE (v)-[:Supplies {rel: $rel}]->(s)",
+                                {"vid": str(vendor_id), "sku": str(sku), "rel": "SUPPLIES"},
+                            )
+
+        # Entity relationships if present in payload
+        entities: list[Any] = []
         if isinstance(payload.get("entities"), list):
-            entities = payload.get("entities")
+            entities = list(payload.get("entities") or [])
         elif isinstance(payload.get("entity_ids"), list):
-            entities = payload.get("entity_ids")
+            entities = list(payload.get("entity_ids") or [])
         elif isinstance(payload.get("entity_names"), list):
-            entities = payload.get("entity_names")
+            entities = list(payload.get("entity_names") or [])
 
         for ent in entities:
             if isinstance(ent, dict):
@@ -147,8 +231,7 @@ while True:
 
             if target_id:
                 conn.execute(
-                    "MATCH (c:Chunk {chunk_id: $cid}), (e:Entity {entity_id: $eid}) "
-                    "MERGE (c)-[:Mentions {rel: $rel}]->(e)",
+                    "MATCH (c:Chunk {chunk_id: $cid}), (e:Entity {entity_id: $eid}) MERGE (c)-[:Mentions {rel: $rel}]->(e)",
                     {"cid": cid, "eid": target_id, "rel": "MENTIONS"},
                 )
 

@@ -1,10 +1,11 @@
 import os
 import tarfile
+
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv('.env')
-load_dotenv('backend/.env')
+load_dotenv(".env")
+load_dotenv("backend/.env")
 
 SNAPSHOTS_URL = os.environ.get(
     "QDRANT_SNAPSHOTS_URL",

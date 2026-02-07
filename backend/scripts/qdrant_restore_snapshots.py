@@ -1,16 +1,19 @@
 import glob
 import os
+
 import httpx
 from dotenv import load_dotenv
 
-load_dotenv('.env')
-load_dotenv('backend/.env')
+load_dotenv(".env")
+load_dotenv("backend/.env")
 
 qdrant_url = os.environ.get("QDRANT_CLUSTER_ENDPOINT")
 qdrant_api_key = os.environ.get("QDRANT_API_KEY")
 
 if not qdrant_url or not qdrant_api_key:
-    raise SystemExit("QDRANT_URL/QDRANT_CLUSTER_ENDPOINT and QDRANT_API_KEY are required")
+    raise SystemExit(
+        "QDRANT_URL/QDRANT_CLUSTER_ENDPOINT and QDRANT_API_KEY are required"
+    )
 
 QDRANT_URL = qdrant_url.rstrip("/")
 SNAPSHOTS_DIR = os.environ.get("QDRANT_SNAPSHOTS_DIR", "data/qdrant/snapshots")
