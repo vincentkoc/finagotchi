@@ -21,6 +21,8 @@ dependencies = [
 dev = [
   "ruff",
   "pytest",
+  "mypy",
+  "pre-commit",
 ]
 
 [build-system]
