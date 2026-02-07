@@ -44,8 +44,13 @@ export function useDilemmaSubmit() {
       setDilemma(newDilemma);
 
       try {
-        // Call backend /qa endpoint
-        const qaResponse = await postQA(responseText, pet.id);
+        // Call backend /qa endpoint — pass dilemma context + evidence IDs for exact matching
+        const qaResponse = await postQA(
+          responseText,
+          pet.id,
+          dilemma.context,
+          dilemma.evidence_ids
+        );
 
         // Emit graph and evidence updates for the graph panel
         emitGraphUpdate({

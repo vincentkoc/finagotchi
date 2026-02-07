@@ -17,6 +17,8 @@ export type ActiveDilemma = {
   }>;
   stats?: FinanceStatsType;
   completed: boolean;
+  context?: string;
+  evidence_ids?: string[];
 };
 
 export type Pet = {

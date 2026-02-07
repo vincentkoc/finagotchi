@@ -93,15 +93,38 @@ export async function checkBackendHealth(): Promise<boolean> {
   }
 }
 
+// Dilemma types
+export type DilemmaResponse = {
+  id: string;
+  question: string;
+  context?: string;
+  evidence_ids?: string[];
+};
+
+// Fetch a data-driven dilemma from the backend
+export async function fetchDilemma(): Promise<DilemmaResponse> {
+  const res = await fetch(`${API_BASE_URL}/dilemma/next`);
+  if (!res.ok) {
+    throw new Error(`Dilemma fetch failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 // API functions
 export async function postQA(
   question: string,
-  petId: string = "default"
+  petId: string = "default",
+  context?: string,
+  evidenceIds?: string[]
 ): Promise<QAResponse> {
+  const body: Record<string, unknown> = { question, pet_id: petId };
+  if (context) body.context = context;
+  if (evidenceIds?.length) body.evidence_ids = evidenceIds;
+
   const res = await fetch(`${API_BASE_URL}/qa`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question, pet_id: petId }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {

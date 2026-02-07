@@ -3,8 +3,9 @@ import { useDilemma, usePet } from "@/app/providers/PetProvider";
 import { dilemmas } from "@/constants/dilemmas";
 import { useDilemmaSubmit } from "./useDilemmaSubmit";
 import FeedbackControls from "../FeedbackControls";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { getRandomUnseenDilemma } from "@/app/utils/dilemma";
+import { fetchDilemma } from "@/lib/api";
 
 export default function Dialog() {
   const { pet } = usePet();
@@ -12,6 +13,7 @@ export default function Dialog() {
   const { handleSubmit, handleFeedback, isSubmitting, lastAnswerDecision } =
     useDilemmaSubmit();
   const hasAutoTriggered = useRef(false);
+  const [isLoadingDilemma, setIsLoadingDilemma] = useState(false);
 
   // Reset auto-trigger when a dilemma completes (becomes null)
   useEffect(() => {
@@ -20,28 +22,65 @@ export default function Dialog() {
     }
   }, [dilemma]);
 
-  // Auto-trigger a scenario when there's none active
-  useEffect(() => {
-    if (!pet || dilemma || hasAutoTriggered.current) return;
-    if (pet.age >= 2) return; // promoted pets don't get new scenarios
+  // Fetch a data-driven dilemma from the backend, with local fallback
+  const triggerNewDilemma = useCallback(async () => {
+    if (!pet || pet.age >= 2) return;
 
-    hasAutoTriggered.current = true;
-    const newDilemma = getRandomUnseenDilemma(pet);
-    if (newDilemma) {
+    setIsLoadingDilemma(true);
+    try {
+      const backendDilemma = await fetchDilemma();
+      if (backendDilemma?.question) {
+        setDilemma({
+          id: backendDilemma.id,
+          messages: [
+            { role: "system", content: backendDilemma.question },
+          ],
+          completed: false,
+          stats: { risk: 0, compliance: 0, thriftiness: 0, anomaly_sensitivity: 0 },
+          context: backendDilemma.context,
+          evidence_ids: backendDilemma.evidence_ids,
+        });
+        return;
+      }
+    } catch {
+      // Backend unavailable — fall through to local
+    }
+
+    // Fallback: use local dilemma
+    const localDilemma = getRandomUnseenDilemma(pet);
+    if (localDilemma) {
+      const text = dilemmas[localDilemma.id]?.text.replaceAll("{pet}", pet.name);
       setDilemma({
-        ...newDilemma,
-        messages: [
-          {
-            role: "system",
-            content: dilemmas[newDilemma.id].text.replaceAll("{pet}", pet.name),
-          },
-        ],
+        ...localDilemma,
+        messages: [{ role: "system", content: text || localDilemma.id }],
       });
     }
-  }, [pet, dilemma, setDilemma]);
+    setIsLoadingDilemma(false);
+  }, [pet, setDilemma]);
+
+  // Auto-trigger on mount
+  useEffect(() => {
+    if (!pet || dilemma || hasAutoTriggered.current) return;
+    if (pet.age >= 2) return;
+
+    hasAutoTriggered.current = true;
+    triggerNewDilemma().finally(() => setIsLoadingDilemma(false));
+  }, [pet, dilemma, triggerNewDilemma]);
 
   if (!pet) {
     return null;
+  }
+
+  if (isLoadingDilemma) {
+    return (
+      <div className="flex w-full h-50 text-lg">
+        <div className="border-2 border-black p-3 bg-zinc-100 w-full flex items-center justify-center">
+          <p className="text-zinc-500 italic animate-pulse">
+            generating scenario from knowledge base...
+          </p>
+        </div>
+      </div>
+    );
   }
 
   if (!dilemma) {
@@ -56,7 +95,9 @@ export default function Dialog() {
     );
   }
 
-  const displayText = dilemmas[dilemma.id]?.text.replaceAll("{pet}", pet.name);
+  // Display the first system message as the dilemma text
+  const displayText =
+    dilemma.messages.find((m) => m.role === "system")?.content || "";
   const placeholder = `advise ${pet.name} on this scenario...`;
 
   // Show feedback controls if the backend has responded with a decision
