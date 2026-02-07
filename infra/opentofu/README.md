@@ -24,7 +24,7 @@ DO_VPC_UUID=your-vpc-uuid
 
 Load them into OpenTofu env vars:
 ```bash
-./infra/opentofu/load_env.sh
+eval "$(./infra/opentofu/load_env.sh --print)"
 ```
 
 ## Auto-add SSH key (optional)
