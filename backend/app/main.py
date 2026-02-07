@@ -33,6 +33,15 @@ qdrant = make_client()
 kuzu = KuzuAdapter()
 pet_store = PetStore()
 
+def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]:
+    nodes: dict[str, dict[str, object]] = {}
+    for edge in edges:
+        src = str(edge.get("source"))
+        dst = str(edge.get("target"))
+        nodes.setdefault(src, {"id": src, "label": src, "group": "overlay"})
+        nodes.setdefault(dst, {"id": dst, "label": dst, "group": "overlay"})
+    return list(nodes.values())
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
@@ -82,6 +91,9 @@ def qa(req: QARequest) -> QAResponse:
         req.pet_id, req.question, evidence, answer_json.model_dump()
     )
 
+    if answer_json.overlay_edges:
+        pet_store.add_overlay_edges(req.pet_id, answer_json.overlay_edges)
+
     overlay_graph = pet_store.get_overlay_graph(req.pet_id)
     neighborhood = kuzu.neighborhood(anchors, depth=2)
 
@@ -97,8 +109,9 @@ def qa(req: QARequest) -> QAResponse:
 
 @app.post("/feedback", response_model=FeedbackResponse)
 def feedback(req: FeedbackRequest) -> FeedbackResponse:
-    pet_stats = pet_store.update_stats("default", req.action)
-    new_path = pet_store.maybe_evolve("default")
+    pet_id = pet_store.get_interaction_pet(req.interaction_id) or "default"
+    pet_stats = pet_store.update_stats(pet_id, req.action)
+    new_path = pet_store.maybe_evolve(pet_id)
 
     # Convert feedback into overlay edges if requested
     overlay_edges = []
@@ -112,19 +125,12 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
                 "meta": {"note": req.rationale},
             }
         )
-    overlay_delta = pet_store.add_overlay_edges("default", overlay_edges)
+    overlay_delta = pet_store.add_overlay_edges(pet_id, overlay_edges)
 
     return FeedbackResponse(
         pet_stats=pet_stats,
         overlay_graph_delta=GraphBundle(
-            nodes=[
-                {"id": e["source"], "label": e["source"], "group": "overlay"}
-                for e in overlay_delta
-            ]
-            + [
-                {"id": e["target"], "label": e["target"], "group": "overlay"}
-                for e in overlay_delta
-            ],
+            nodes=_nodes_from_edges(overlay_delta),
             edges=overlay_delta,
         ),
         new_path=new_path,
@@ -132,9 +138,9 @@ def feedback(req: FeedbackRequest) -> FeedbackResponse:
 
 
 @app.get("/pet", response_model=PetResponse)
-def pet() -> PetResponse:
-    pet_state = pet_store.get_pet("default")
-    recent = pet_store.list_interactions("default")
+def pet(pet_id: str = "default") -> PetResponse:
+    pet_state = pet_store.get_pet(pet_id)
+    recent = pet_store.list_interactions(pet_id)
     return PetResponse(
         pet_stats=pet_state["stats"],
         path=pet_state["path"],

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 def _env(name: str, default: str | None = None) -> str | None:
@@ -38,8 +38,10 @@ class Settings:
 
     sqlite_path: str = _env("SQLITE_PATH", os.path.abspath("./backend/pet_state.db"))
 
-    cors_origins: list[str] = (
-        _env("CORS_ORIGINS", "http://localhost:3000").split(",")
+    cors_origins: list[str] = field(
+        default_factory=lambda: _env("CORS_ORIGINS", "http://localhost:3000").split(
+            ","
+        )
     )
 
 

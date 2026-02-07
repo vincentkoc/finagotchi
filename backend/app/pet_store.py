@@ -101,6 +101,16 @@ class PetStore:
             conn.commit()
         return interaction_id
 
+    def get_interaction_pet(self, interaction_id: str) -> str | None:
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT pet_id FROM interactions WHERE id = ?",
+                (interaction_id,),
+            ).fetchone()
+            if row:
+                return row[0]
+        return None
+
     def list_interactions(self, pet_id: str, limit: int = 10) -> list[dict[str, Any]]:
         with self._connect() as conn:
             rows = conn.execute(
