@@ -19,6 +19,7 @@ DO_BACKEND_SIZE=s-4vcpu-8gb
 DO_FRONTEND_SIZE=s-1vcpu-1gb
 DO_BACKEND_IMAGE_SLUG=ubuntu-22-04-x64
 DO_FRONTEND_IMAGE_SLUG=ubuntu-22-04-x64
+DO_VPC_UUID=your-vpc-uuid
 ```
 
 Load them into OpenTofu env vars:
@@ -39,6 +40,7 @@ It also writes the fingerprint back into `.env`.
 ```bash
 ./infra/opentofu/list_do_sizes.sh
 ./infra/opentofu/list_do_keys.sh
+./infra/opentofu/list_do_vpcs.sh
 ```
 
 ## Usage
@@ -49,6 +51,13 @@ cd infra/opentofu
 tofu init
 tofu apply -lock=false
 ```
+
+## Auto-deploy after tofu
+```bash
+./infra/opentofu/deploy_after_tofu.sh
+```
+
+This SSHes into both droplets, runs the bootstrap scripts, and prints next steps.
 
 ## Generate SSH key + fingerprint
 ```bash

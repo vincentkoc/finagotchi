@@ -48,3 +48,9 @@ variable "frontend_image_slug" {
   description = "Frontend image slug"
   default     = "ubuntu-22-04-x64"
 }
+
+variable "vpc_uuid" {
+  type        = string
+  description = "DigitalOcean VPC UUID (optional)"
+  default     = ""
+}

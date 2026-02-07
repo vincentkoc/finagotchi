@@ -41,5 +41,8 @@ fi
 if [ -n "${DO_FRONTEND_IMAGE_SLUG:-}" ]; then
   export TF_VAR_frontend_image_slug="$DO_FRONTEND_IMAGE_SLUG"
 fi
+if [ -n "${DO_VPC_UUID:-}" ]; then
+  export TF_VAR_vpc_uuid="$DO_VPC_UUID"
+fi
 
 printf "[ok] Loaded DO env from %s\n" "$ROOT_ENV"
