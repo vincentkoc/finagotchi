@@ -27,24 +27,24 @@ variable "frontend_droplet_name" {
 
 variable "backend_size" {
   type        = string
-  description = "GPU droplet size slug"
-  default     = "g-rtx4000x1"
+  description = "Backend droplet size slug"
+  default     = "s-4vcpu-8gb"
 }
 
 variable "frontend_size" {
   type        = string
-  description = "CPU droplet size slug"
+  description = "Frontend droplet size slug"
   default     = "s-1vcpu-1gb"
 }
 
-variable "gpu_image_slug" {
+variable "backend_image_slug" {
   type        = string
-  description = "GPU-optimized image slug"
-  default     = "gpu-h100x1-base" # Replace if needed; see DO image list
+  description = "Backend image slug"
+  default     = "ubuntu-22-04-x64"
 }
 
-variable "cpu_image_slug" {
+variable "frontend_image_slug" {
   type        = string
-  description = "CPU image slug"
+  description = "Frontend image slug"
   default     = "ubuntu-22-04-x64"
 }

@@ -29,14 +29,17 @@ export TF_VAR_ssh_key_fingerprint="$SSH_KEY_FINGERPRINT"
 if [ -n "${DO_REGION:-}" ]; then
   export TF_VAR_region="$DO_REGION"
 fi
-if [ -n "${DO_GPU_SIZE:-}" ]; then
-  export TF_VAR_backend_size="$DO_GPU_SIZE"
+if [ -n "${DO_BACKEND_SIZE:-}" ]; then
+  export TF_VAR_backend_size="$DO_BACKEND_SIZE"
 fi
-if [ -n "${DO_CPU_SIZE:-}" ]; then
-  export TF_VAR_frontend_size="$DO_CPU_SIZE"
+if [ -n "${DO_FRONTEND_SIZE:-}" ]; then
+  export TF_VAR_frontend_size="$DO_FRONTEND_SIZE"
 fi
-if [ -n "${DO_GPU_IMAGE_SLUG:-}" ]; then
-  export TF_VAR_gpu_image_slug="$DO_GPU_IMAGE_SLUG"
+if [ -n "${DO_BACKEND_IMAGE_SLUG:-}" ]; then
+  export TF_VAR_backend_image_slug="$DO_BACKEND_IMAGE_SLUG"
+fi
+if [ -n "${DO_FRONTEND_IMAGE_SLUG:-}" ]; then
+  export TF_VAR_frontend_image_slug="$DO_FRONTEND_IMAGE_SLUG"
 fi
 
 printf "[ok] Loaded DO env from %s\n" "$ROOT_ENV"
