@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import os
-from typing import Any, cast
+import threading
+from typing import Any, List, cast
 
 try:
     from llama_cpp import Llama
@@ -28,6 +29,8 @@ class InprocLLM:
         embed_threads = int(os.environ.get("LLM_EMBED_THREADS", "4"))
         embed_ctx = int(os.environ.get("LLM_EMBED_CTX", "8192"))
 
+        self._lock = threading.Lock()
+
         self._chat = Llama(
             model_path=chat_model_path,
             n_ctx=n_ctx,
@@ -49,14 +52,16 @@ class InprocLLM:
         max_tokens: int = 256,
         temperature: float = 0.2,
     ) -> dict[str, Any]:
-        result = self._chat.create_chat_completion(
-            messages=cast(Any, messages),
-            temperature=temperature,
-            max_tokens=max_tokens,
-        )
+        with self._lock:
+            result = self._chat.create_chat_completion(
+                messages=cast(Any, messages),
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
         return cast(dict[str, Any], result)
 
     def embed(self, text: str) -> list[float]:
-        result = self._embed.create_embedding(text)
+        with self._lock:
+            result = self._embed.create_embedding(text)
         embedding = result["data"][0]["embedding"]
-        return cast(list[float], embedding)
+        return cast(List[float], embedding)

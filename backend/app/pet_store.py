@@ -83,11 +83,7 @@ class PetStore:
             return {"stats": dict(DEFAULT_STATS), "path": DEFAULT_PATH}
 
     def log_interaction(
-        self,
-        pet_id: str,
-        question: str,
-        evidence: list[dict[str, Any]],
-        answer: dict[str, Any],
+        self, pet_id: str, question: str, evidence: list[dict[str, Any]], answer: dict[str, Any]
     ) -> str:
         interaction_id = str(uuid.uuid4())
         with self._connect() as conn:
@@ -241,6 +237,53 @@ class PetStore:
                     "label": rel,
                     "weight": weight,
                     "meta": json.loads(meta_json) if meta_json else {},
+                    "isOverlay": True,
                 }
             )
         return {"nodes": list(nodes.values()), "edges": edges}
+
+    def export_pet(self, pet_id: str) -> list[dict[str, Any]]:
+        with self._connect() as conn:
+            interactions = conn.execute(
+                "SELECT question, evidence_json, answer_json, created_at FROM interactions WHERE pet_id = ? ORDER BY created_at ASC",
+                (pet_id,),
+            ).fetchall()
+            overlay_edges = conn.execute(
+                "SELECT src, rel, dst, weight, meta_json, created_at FROM overlay_edges WHERE pet_id = ? ORDER BY created_at ASC",
+                (pet_id,),
+            ).fetchall()
+
+        overlay = [
+            {
+                "src": r[0],
+                "rel": r[1],
+                "dst": r[2],
+                "weight": r[3],
+                "meta": json.loads(r[4]) if r[4] else {},
+                "timestamp": r[5],
+            }
+            for r in overlay_edges
+        ]
+
+        exports = []
+        for q, evidence_json, answer_json, created_at in interactions:
+            try:
+                evidence = json.loads(evidence_json)
+            except Exception:
+                evidence = []
+            try:
+                answer = json.loads(answer_json)
+            except Exception:
+                answer = {}
+            exports.append(
+                {
+                    "question": q,
+                    "evidence": evidence,
+                    "decision": answer.get("decision"),
+                    "rationale": answer.get("rationale"),
+                    "confidence": answer.get("confidence"),
+                    "overlay_edges": overlay,
+                    "timestamp": created_at,
+                }
+            )
+        return exports

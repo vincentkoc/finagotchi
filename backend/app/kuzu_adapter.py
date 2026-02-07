@@ -59,10 +59,13 @@ class KuzuAdapter:
                         {
                             "id": v_id,
                             "label": f"Vendor {getattr(v, 'vendor_id', vid)}",
-                            "group": "Vendor",
-                            "type": "Vendor",
+                            "group": "vendor",
+                            "type": "vendor",
                             "meta": {"vendor_id": getattr(v, 'vendor_id', vid)},
-                            "properties": {"vendor_id": getattr(v, 'vendor_id', vid)},
+                            "properties": {
+                                "vendor_id": getattr(v, 'vendor_id', vid),
+                                "tooltip": f"Vendor {getattr(v, 'vendor_id', vid)}",
+                            },
                         },
                     )
                     nodes.setdefault(
@@ -70,14 +73,15 @@ class KuzuAdapter:
                         {
                             "id": i_id,
                             "label": f"{getattr(i, 'invoice_id', '')} | ${getattr(i, 'total', '')}",
-                            "group": "Invoice",
-                            "type": "Invoice",
+                            "group": "transaction",
+                            "type": "transaction",
                             "meta": {"invoice_id": getattr(i, 'invoice_id', '')},
                             "properties": {
                                 "invoice_id": getattr(i, 'invoice_id', ''),
                                 "total": getattr(i, 'total', None),
                                 "date": getattr(i, 'date', None),
                                 "due_date": getattr(i, 'due_date', None),
+                                "tooltip": f"Invoice {getattr(i, 'invoice_id', '')} | ${getattr(i, 'total', '')} | due {getattr(i, 'due_date', '')}",
                             },
                         },
                     )
@@ -86,10 +90,14 @@ class KuzuAdapter:
                         {
                             "id": s_id,
                             "label": f"{getattr(s, 'sku', '')} | {getattr(s, 'product', '')}",
-                            "group": "SKU",
-                            "type": "SKU",
+                            "group": "entity",
+                            "type": "entity",
                             "meta": {"sku": getattr(s, 'sku', '')},
-                            "properties": {"sku": getattr(s, 'sku', ''), "product": getattr(s, 'product', '')},
+                            "properties": {
+                                "sku": getattr(s, 'sku', ''),
+                                "product": getattr(s, 'product', ''),
+                                "tooltip": f"{getattr(s, 'sku', '')} | {getattr(s, 'product', '')}",
+                            },
                         },
                     )
 
@@ -132,7 +140,10 @@ class KuzuAdapter:
                                 "group": "Vendor",
                                 "type": "Vendor",
                                 "meta": {"vendor_id": getattr(v, 'vendor_id', '')},
-                                "properties": {"vendor_id": getattr(v, 'vendor_id', '')},
+                                "properties": {
+                                    "vendor_id": getattr(v, 'vendor_id', ''),
+                                    "tooltip": f"Vendor {getattr(v, 'vendor_id', '')}",
+                                },
                             },
                         )
                     i_id = f"invoice:{getattr(i, 'invoice_id', iid)}"
@@ -141,14 +152,15 @@ class KuzuAdapter:
                         {
                             "id": i_id,
                             "label": f"{getattr(i, 'invoice_id', iid)} | ${getattr(i, 'total', '')}",
-                            "group": "Invoice",
-                            "type": "Invoice",
+                            "group": "transaction",
+                            "type": "transaction",
                             "meta": {"invoice_id": getattr(i, 'invoice_id', iid)},
                             "properties": {
                                 "invoice_id": getattr(i, 'invoice_id', iid),
                                 "total": getattr(i, 'total', None),
                                 "date": getattr(i, 'date', None),
                                 "due_date": getattr(i, 'due_date', None),
+                                "tooltip": f"Invoice {getattr(i, 'invoice_id', iid)} | ${getattr(i, 'total', '')} | due {getattr(i, 'due_date', '')}",
                             },
                         },
                     )
@@ -162,7 +174,11 @@ class KuzuAdapter:
                                 "group": "SKU",
                                 "type": "SKU",
                                 "meta": {"sku": getattr(s, 'sku', '')},
-                                "properties": {"sku": getattr(s, 'sku', ''), "product": getattr(s, 'product', '')},
+                                "properties": {
+                                    "sku": getattr(s, 'sku', ''),
+                                    "product": getattr(s, 'product', ''),
+                                    "tooltip": f"{getattr(s, 'sku', '')} | {getattr(s, 'product', '')}",
+                                },
                             },
                         )
                         edges.append(
@@ -192,8 +208,8 @@ class KuzuAdapter:
                             {
                                 "id": c_id,
                                 "label": cid,
-                                "group": "Chunk",
-                                "type": "Chunk",
+                                "group": "entity",
+                                "type": "entity",
                                 "meta": {"chunk_id": cid},
                                 "properties": {"chunk_id": cid},
                             },

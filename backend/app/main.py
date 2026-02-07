@@ -65,19 +65,44 @@ pet_store = PetStore()
 bank = DilemmaBank()
 
 
+def _normalize_graph(bundle: dict) -> GraphBundle:
+    """Convert raw graph dicts into validated GraphBundle with normalized types."""
+    nodes: list[GraphNode] = []
+    for n in bundle.get("nodes", []):
+        nodes.append(
+            GraphNode(
+                id=n.get("id"),
+                label=n.get("label"),
+                type=n.get("type") or n.get("group"),
+                group=n.get("group"),
+                meta=n.get("meta", {}),
+                properties=n.get("properties") or n.get("meta", {}),
+            )
+        )
+    edges: list[GraphEdge] = []
+    for e in bundle.get("edges", []):
+        edges.append(
+            GraphEdge(
+                id=e.get("id"),
+                source=e.get("source"),
+                target=e.get("target"),
+                label=e.get("label"),
+                weight=e.get("weight"),
+                meta=e.get("meta", {}),
+                isOverlay=e.get("isOverlay"),
+            )
+        )
+    return GraphBundle(nodes=nodes, edges=edges)
+
+
 def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]:
     nodes: dict[str, dict[str, object]] = {}
     for edge in edges:
         src = str(edge.get("source"))
         dst = str(edge.get("target"))
-        nodes.setdefault(src, {"id": src, "label": src, "group": "overlay"})
-        nodes.setdefault(dst, {"id": dst, "label": dst, "group": "overlay"})
+        nodes.setdefault(src, {"id": src, "label": src, "group": "overlay", "type": "overlay"})
+        nodes.setdefault(dst, {"id": dst, "label": dst, "group": "overlay", "type": "overlay"})
     return list(nodes.values())
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    return {"status": "ok", "time": str(time.time())}
 
 
 @app.middleware("http")
@@ -96,6 +121,11 @@ async def log_requests(request: Request, call_next):
     return response
 
 
+@app.get("/health")
+def health() -> dict[str, str]:
+    return {"status": "ok", "time": str(time.time())}
+
+
 @app.get("/health/models")
 def health_models() -> dict[str, object]:
     status: dict[str, object] = {"chat": False, "embed": False}
@@ -110,6 +140,26 @@ def health_models() -> dict[str, object]:
     except Exception:
         status["embed"] = False
     return status
+
+
+@app.get("/ready")
+def ready() -> dict[str, object]:
+    # Readiness check: qdrant + models
+    ok = True
+    details: dict[str, object] = {}
+    try:
+        _ = qdrant.get_collection(settings.qdrant_collection)
+        details["qdrant"] = True
+    except Exception as exc:  # pragma: no cover
+        details["qdrant"] = False
+        details["qdrant_error"] = str(exc)
+        ok = False
+
+    models = health_models()
+    details.update(models)
+    if not models.get("chat") or not models.get("embed"):
+        ok = False
+    return {"ok": ok, "details": details}
 
 
 @app.post("/llm/chat", summary="Proxy chat completions", tags=["LLM"])
@@ -179,9 +229,7 @@ def next_dilemma() -> DilemmaResponse:
     response_model=QAResponse,
     summary="Answer a question with evidence",
     tags=["Core"],
-    responses={
-        200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}
-    },
+    responses={200: {"content": {"application/json": {"example": QA_EXAMPLE_RESPONSE}}}},
 )
 def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QAResponse:
     pet = pet_store.get_pet(req.pet_id)
@@ -237,7 +285,6 @@ def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QARespons
             "overlay_edges": [],
         }
 
-    # Normalize answer
     def _coerce_confidence(value: object) -> float:
         if isinstance(value, (int, float)):
             return float(value)
@@ -268,35 +315,6 @@ def qa(req: Annotated[QARequest, Body(example=QA_EXAMPLE_REQUEST)]) -> QARespons
     if not neighborhood.get("nodes"):
         neighborhood = build_graph_from_evidence(evidence, anchors)
 
-    def _normalize_graph(bundle: dict) -> GraphBundle:
-        nodes: list[GraphNode] = []
-        for n in bundle.get("nodes", []):
-            nodes.append(
-                GraphNode(
-                    id=n.get("id"),
-                    label=n.get("label"),
-                    type=n.get("type") or n.get("group"),
-                    group=n.get("group"),
-                    meta=n.get("meta", {}),
-                    properties=n.get("properties") or n.get("meta", {}),
-                )
-            )
-        edges: list[GraphEdge] = []
-        for e in bundle.get("edges", []):
-            edges.append(
-                GraphEdge(
-                    id=e.get("id"),
-                    source=e.get("source"),
-                    target=e.get("target"),
-                    label=e.get("label"),
-                    weight=e.get("weight"),
-                    meta=e.get("meta", {}),
-                    isOverlay=e.get("isOverlay"),
-                )
-            )
-        return GraphBundle(nodes=nodes, edges=edges)
-
-    # Combined graph for convenience
     combined = {
         "nodes": neighborhood.get("nodes", []) + overlay_graph.get("nodes", []),
         "edges": neighborhood.get("edges", []) + overlay_graph.get("edges", []),
@@ -329,7 +347,6 @@ def feedback(
     pet_stats = pet_store.update_stats(pet_id, req.action)
     new_path = pet_store.maybe_evolve(pet_id)
 
-    # Convert feedback into overlay edges if requested
     overlay_edges = []
     if req.rationale:
         overlay_edges.append(
@@ -353,9 +370,7 @@ def feedback(
                     label=str(n.get("label")) if n.get("label") is not None else None,
                     group=str(n.get("group")) if n.get("group") is not None else None,
                     type=str(n.get("type")) if n.get("type") is not None else None,
-                    meta=cast(dict, n.get("meta"))
-                    if isinstance(n.get("meta"), dict)
-                    else {},
+                    meta=cast(dict, n.get("meta")) if isinstance(n.get("meta"), dict) else {},
                     properties=cast(dict, n.get("properties"))
                     if isinstance(n.get("properties"), dict)
                     else None,
@@ -397,22 +412,24 @@ def pet(pet_id: str = "default") -> PetResponse:
 
 @app.get(
     "/graph/neighborhood",
+    response_model=GraphBundle,
     summary="Fetch a graph neighborhood",
     tags=["Graph"],
 )
-def graph_neighborhood(entity_id: str, depth: int = 2) -> dict[str, object]:
-    anchors = {"vendor_id": {entity_id}, "transaction_id": set(), "sku": set()}
-    return kuzu.neighborhood(anchors, depth=depth)
+def graph_neighborhood(entity_id: str, depth: int = 2) -> GraphBundle:
+    anchors = {"vendor_id": {entity_id}, "transaction_id": set(), "sku": set(), "chunk_id": set()}
+    result = kuzu.neighborhood(anchors, depth=depth)
+    return _normalize_graph(result)
 
 
 @app.get(
     "/graph/sample",
+    response_model=GraphBundle,
     summary="Debug sample graph nodes",
     description="Returns a small graph sample for quick UI testing.",
     tags=["Graph"],
 )
-def graph_sample() -> dict[str, object]:
-    # Return a small sample by using recent evidence from Qdrant
+def graph_sample() -> GraphBundle:
     points = search(qdrant, llm.embed("invoice vendor payment"))
     evidence = to_evidence(points)
     anchors = extract_anchors(evidence)
@@ -420,4 +437,24 @@ def graph_sample() -> dict[str, object]:
     neighborhood = kuzu.neighborhood(anchors, depth=1)
     if not neighborhood.get("nodes"):
         neighborhood = build_graph_from_evidence(evidence, anchors)
-    return neighborhood
+    return _normalize_graph(neighborhood)
+
+
+@app.get(
+    "/export/pet",
+    summary="Export pet interactions for distillation",
+    tags=["Export"],
+)
+def export_pet(pet_id: str = "default") -> dict[str, object]:
+    return {"pet_id": pet_id, "rows": pet_store.export_pet(pet_id)}
+
+
+@app.get(
+    "/export/pet.jsonl",
+    summary="Export pet interactions as JSONL",
+    tags=["Export"],
+)
+def export_pet_jsonl(pet_id: str = "default") -> Response:
+    rows = pet_store.export_pet(pet_id)
+    lines = "\n".join(json.dumps(r) for r in rows)
+    return Response(content=lines, media_type="application/jsonl")
