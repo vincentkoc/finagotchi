@@ -91,7 +91,14 @@ def build_graph_from_evidence(
     # Inter-anchor edges (e.g. vendor → transaction if they co-occur in evidence)
     _add_cooccurrence_edges(evidence, anchors, nodes, edges)
 
-    return {"nodes": list(nodes.values()), "edges": edges}
+    # Prune orphan nodes (no edges)
+    connected = set()
+    for e in edges:
+        connected.add(e["source"])
+        connected.add(e["target"])
+    pruned_nodes = [n for n in nodes.values() if n["id"] in connected]
+
+    return {"nodes": pruned_nodes, "edges": edges}
 
 
 def _label_from_parsed(parsed: dict | None, fallback_id: str) -> str:
