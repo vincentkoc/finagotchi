@@ -17,3 +17,5 @@ __pycache__/
 # OS
 .DS_Store
 /external/grey
+.next/trace
+.next/trace-build
