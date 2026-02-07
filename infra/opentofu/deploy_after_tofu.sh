@@ -31,12 +31,16 @@ echo "[info] Backend IP: $BACKEND_IP"
 ssh root@"$BACKEND_IP" "REPO_URL=$REPO_URL_LOCAL; \
   if [ ! -d finagotchi ]; then git clone \"\$REPO_URL\"; fi; \
   cd finagotchi; \
+  git fetch --all --prune; \
+  git reset --hard origin/main; \
   ./scripts/bootstrap_backend_gpu.sh"
 
 echo "[info] Frontend IP: $FRONTEND_IP"
 ssh root@"$FRONTEND_IP" "REPO_URL=$REPO_URL_LOCAL API_URL=$API_URL; \
   if [ ! -d finagotchi ]; then git clone \"\$REPO_URL\"; fi; \
   cd finagotchi; \
+  git fetch --all --prune; \
+  git reset --hard origin/main; \
   ./scripts/bootstrap_frontend_cpu.sh"
 
 cat <<EON
