@@ -5,20 +5,24 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import settings
+from .logging_setup import setup_logging
 from .llm_client import LLMClient
 from .kuzu_adapter import KuzuAdapter
 from .pet_store import PetStore
 from .qdrant_client import make_client, search, to_evidence, extract_anchors
+from .dilemma_bank import DilemmaBank
 from .schemas import (
     QARequest,
     QAResponse,
     FeedbackRequest,
     FeedbackResponse,
     PetResponse,
+    DilemmaResponse,
     GraphBundle,
     AnswerJSON,
 )
 
+setup_logging()
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +36,7 @@ llm = LLMClient()
 qdrant = make_client()
 kuzu = KuzuAdapter()
 pet_store = PetStore()
+bank = DilemmaBank()
 
 def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]:
     nodes: dict[str, dict[str, object]] = {}
@@ -46,6 +51,12 @@ def _nodes_from_edges(edges: list[dict[str, object]]) -> list[dict[str, object]]
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "time": str(time.time())}
+
+
+@app.get("/dilemma/next", response_model=DilemmaResponse)
+def next_dilemma() -> DilemmaResponse:
+    item = bank.next()
+    return DilemmaResponse(id=item.id, question=item.question)
 
 
 @app.post("/qa", response_model=QAResponse)

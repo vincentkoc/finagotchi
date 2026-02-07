@@ -22,7 +22,7 @@ endef
 
 .DEFAULT_GOAL := help
 
-.PHONY: help setup-venv install install-dev format lint test precommit api kill-port api-restart
+.PHONY: help setup-venv install install-dev format lint test precommit api api-noreload kill-port api-restart
 
 PORT ?= 8000
 
@@ -36,6 +36,7 @@ help:
 	@echo "  lint          Run linter (ruff)"
 	@echo "  test          Run tests (if any)"
 	@echo "  api           Run backend API (uvicorn)"
+	@echo "  api-noreload  Run backend API without reload (avoids reloader zombies)"
 	@echo "  kill-port     Stop process on PORT (default 8000)"
 	@echo "  api-restart   Kill port and restart API"
 
@@ -68,6 +69,9 @@ kill-port:
 
 api:
 	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $(PORT) --reload --reload-dir $(CURDIR)
+
+api-noreload:
+	$(PYTHON) -m uvicorn backend.app.main:app --host 127.0.0.1 --port $(PORT)
 
 api-restart:
 	PORT=$(PORT) scripts/kill_port.sh $(PORT)

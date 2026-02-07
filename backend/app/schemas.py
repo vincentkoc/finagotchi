@@ -9,6 +9,11 @@ class QARequest(BaseModel):
     pet_id: str = "default"
 
 
+class DilemmaResponse(BaseModel):
+    id: str
+    question: str
+
+
 class EvidenceItem(BaseModel):
     id: str
     text: str

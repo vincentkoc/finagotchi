@@ -3,9 +3,16 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+from dotenv import load_dotenv
+
 
 def _env(name: str, default: str | None = None) -> str | None:
     return os.environ.get(name, default)
+
+
+# Load .env files (repo root or backend/.env)
+load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".env")))
+load_dotenv(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".env")))
 
 
 @dataclass(frozen=True)
