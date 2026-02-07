@@ -21,6 +21,12 @@ This backend expects OpenAI-compatible endpoints:
 
 Use your existing GGUF runner setup (from airgapped-offfline-rag) and set env vars accordingly.
 
+## Qdrant snapshots (cloud)
+```bash
+make qdrant-download
+make qdrant-restore
+```
+
 ## Smoke tests
 ```bash
 python backend/scripts/smoke_models.py
