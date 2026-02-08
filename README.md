@@ -29,6 +29,8 @@ Finagotchi was born out of the AI‑Memory Hackathon by Cognee in SF (link: `htt
 - **Pet memory** is a lightweight overlay (stats + edges) that never mutates the base data.
 - **Exports** turn interactions into JSONL for Distil Labs fine‑tuning.
 
+![How Finagotchi Works](docs/how_it_works.png)
+
 **Docs**
 - API overview: `docs/API_OVERVIEW.md`
 - V2 PRD: `docs/PRD_v2.md`
