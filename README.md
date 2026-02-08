@@ -2,12 +2,6 @@
 
 # 🐦 Finagotchi
 
-> **Note**  
-> You’ll need GGUFs to run locally:
-> - Distil Labs SLM: `cognee-distillabs-model-gguf-quantized`
-> - Cognee embed model: `nomic-embed-text-v1.5`
-> Read more: [ai-memory-hackathon](https://github.com/vincentkoc/ai-memory-hackathon)
-
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688)](https://fastapi.tiangolo.com/)
 [![Next.js](https://img.shields.io/badge/Next.js-15-black)](https://nextjs.org/)
@@ -33,6 +27,11 @@ Finagotchi was born out of the [AI‑Memory Hackathon by Cognee](https://luma.co
 - **Exports** turn interactions into JSONL for Distil Labs fine‑tuning.
 
 <hr/>
+
+> **Note**  
+> You’ll need GGUFs to run locally:
+> **Distil Labs** SLM: `cognee-distillabs-model-gguf-quantized` & **Cognee** embed model: `nomic-embed-text-v1.5`
+> Read more: [ai-memory-hackathon](https://github.com/vincentkoc/ai-memory-hackathon)
 
 ### Workflow
 1. Ingest → Qdrant vectors + Kuzu graph.
