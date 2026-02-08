@@ -32,6 +32,14 @@ export type Pet = {
   dilemmas: ActiveDilemma[];
 };
 
+const makeId = (): string => {
+  const cryptoObj = typeof globalThis !== "undefined" ? globalThis.crypto : undefined;
+  if (cryptoObj && "randomUUID" in cryptoObj) {
+    return cryptoObj.randomUUID();
+  }
+  return `pet_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+};
+
 // Debounced save function to prevent excessive localStorage writes
 let saveTimeout: NodeJS.Timeout | null = null;
 const debouncedSave = (key: string, data: Pet[], delay = 500) => {
@@ -70,7 +78,7 @@ export const getPets = (): Pet[] => {
 export const createPet = async (name: string): Promise<Pet> => {
   const pets = getPets();
   const newPet: Pet = {
-    id: crypto.randomUUID(),
+    id: makeId(),
     name,
     age: 0,
     evolutionIds: [EvolutionId.BABY],
