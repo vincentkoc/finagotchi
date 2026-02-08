@@ -10,6 +10,7 @@ const pathToText = {
   create: "recruitment desk",
   about: "about finagotchi",
   dossiers: "personnel records",
+  workflow: "how it works",
 };
 
 // Custom popup component
@@ -69,14 +70,14 @@ function MenuContent({
   showConfirmPopup,
   isDark,
 }: {
-  page: "play" | "create" | "dossiers" | "about";
+  page: "play" | "create" | "dossiers" | "about" | "workflow";
   showConfirmPopup: () => void;
   isDark: boolean;
 }) {
   const { pet } = usePet();
   const hoverClass = isDark ? "hover:text-white" : "hover:text-zinc-800";
 
-  if (page === "about" || page === "dossiers") {
+  if (page === "about" || page === "dossiers" || page === "workflow") {
     return (
       <>
         <AnimatePresence>
@@ -154,11 +155,23 @@ function MenuContent({
 
       <AnimatePresence>
         <motion.a
-          href="/about"
+          href="/workflow"
           className={`${hoverClass} no-drag`}
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.5 }}
+        >
+          how it works
+        </motion.a>
+      </AnimatePresence>
+
+      <AnimatePresence>
+        <motion.a
+          href="/about"
+          className={`${hoverClass} no-drag`}
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.6 }}
         >
           about
         </motion.a>
@@ -170,7 +183,7 @@ function MenuContent({
 const MobileMenu = forwardRef<
   HTMLDivElement,
   {
-    page: "play" | "create" | "dossiers" | "about";
+    page: "play" | "create" | "dossiers" | "about" | "workflow";
     isOpen: boolean;
     onClose: () => void;
     showConfirmPopup: () => void;
@@ -180,7 +193,7 @@ const MobileMenu = forwardRef<
 
   const menuItems = [];
 
-  if (page === "about" || page === "dossiers") {
+  if (page === "about" || page === "dossiers" || page === "workflow") {
     menuItems.push(
       <motion.a
         key="back"
@@ -235,13 +248,27 @@ const MobileMenu = forwardRef<
 
     menuItems.push(
       <motion.a
+        key="workflow"
+        href="/workflow"
+        className="hover:text-zinc-800 no-drag block py-2"
+        onClick={onClose}
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.2, delay: 0.2 }}
+      >
+        how it works
+      </motion.a>
+    );
+
+    menuItems.push(
+      <motion.a
         key="about"
         href="/about"
         className="hover:text-zinc-800 no-drag block py-2"
         onClick={onClose}
         initial={{ opacity: 0, x: -20 }}
         animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.2, delay: 0.2 }}
+        transition={{ duration: 0.2, delay: 0.3 }}
       >
         about
       </motion.a>
@@ -291,7 +318,7 @@ export default function Menu({
   variant = "default",
   extra,
 }: {
-  page: "play" | "create" | "dossiers" | "about";
+  page: "play" | "create" | "dossiers" | "about" | "workflow";
   variant?: "default" | "dark";
   extra?: React.ReactNode;
 }) {
