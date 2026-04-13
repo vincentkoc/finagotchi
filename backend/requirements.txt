@@ -8,5 +8,5 @@ kuzu==0.6.1
 llama-cpp-python==0.3.16
 mypy==1.10.0
 ruff==0.5.7
-pytest==8.3.2
+pytest==9.0.3
 pre-commit==3.7.1
