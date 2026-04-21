@@ -20,3 +20,9 @@ __pycache__/
 .next/trace
 .next/trace-build
 backend/pet_state.db
+*.hcl
+infra/opentofu/terraform.tfstate.backup
+infra/opentofu/terraform.tfstate
+*.tfstate
+*.tfstate
+frontend/.rush/temp/shrinkwrap-deps.json

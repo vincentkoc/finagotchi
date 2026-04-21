@@ -207,8 +207,12 @@ export default function Workflow() {
       <Window title="how finagotchi works" isOpen={true}>
         <div className="flex flex-col gap-3 p-4">
           {/* Diagram */}
-          <div className="bg-white border-2 border-zinc-200 aspect-[16/7]">
-            <div ref={containerRef} className="w-full h-full" />
+          <div className="bg-white border-2 border-zinc-200">
+            <img
+              src="/how_it_works.png"
+              alt="How Finagotchi works"
+              className="w-full h-auto block"
+            />
           </div>
 
           {/* Legend */}
